@@ -6,6 +6,7 @@ from typing import Callable, Any, Union
 import pygame
 from .classes import Drawable, Focusable, Text
 from .joystick import Joystick
+from .keyboard import Keyboard
 
 CONFIG_FILE = os.path.join(sys.path[0], "settings.conf")
 
@@ -15,6 +16,7 @@ class WindowCallback:
         self.time = 0
         self.callback = callback
         self.clock = pygame.time.Clock()
+        self.clock.tick()
 
     def can_call(self) -> bool:
         self.time += self.clock.tick()
@@ -31,8 +33,10 @@ class Window:
     __enable_music = True
     __enable_sound = True
     actual_music = None
-    __show_fps = None
+    __show_fps = False
+    __fps_params = dict()
     joystick = list()
+    keyboard = Keyboard()
 
     def __init__(self, master=None, size=(0, 0), flags=0, fps=60, bg_color=(0, 0, 0), bg_music=None):
         if not pygame.get_init():
@@ -176,15 +180,16 @@ class Window:
 
     def mainloop(self, fill_bg=True):
         self.loop = True
-        if self.bg_music is None and Window.actual_music is not None:
-            self.bg_music = str(Window.actual_music)
         self.place_objects()
         self.set_grid()
-        if Focusable.MODE != Focusable.MODE_MOUSE:
+        if Focusable.MODE != Focusable.MODE_MOUSE and self.focusable_objects_idx < 0:
             self.set_focus(self.focus_next())
         while self.loop:
             self.main_clock.tick(self.fps)
             self.update()
+            for joystick in self.joystick:
+                joystick.update()
+            self.keyboard.update()
             self.draw_and_refresh(fill_bg)
             self.event_handler()
             self.check_sound_status()
@@ -210,7 +215,7 @@ class Window:
         pass
 
     def draw_screen(self, fill=True, show_fps=True):
-        if fill and self.bg_color is not None and self.master is None:
+        if fill and self.bg_color is not None:
             self.window.fill(self.bg_color)
         if isinstance(self.master, Window):
             self.master.draw_screen(show_fps=False)
@@ -218,20 +223,22 @@ class Window:
             obj.draw(self.window)
             if issubclass(type(obj), Focusable):
                 obj.after_drawing(self.window)
-        if Window.__show_fps is not None and show_fps:
-            params = dict(Window.__show_fps)
+        if Window.__show_fps is True and show_fps:
+            params = Window.__fps_params
             Text(f"{round(self.main_clock.get_fps())} FPS", **params).draw(self.window)
 
     @staticmethod
     def show_fps(status: bool, **kwargs):
-        if status:
-            if "font" not in kwargs:
-                kwargs["font"] = None
-            if "color" not in kwargs:
-                kwargs["color"] = (0, 0, 255)
-            Window.__show_fps = kwargs.copy()
-        else:
-            Window.__show_fps = None
+        Window.__show_fps = bool(status)
+        if "font" not in kwargs and "font" not in Window.__fps_params:
+            kwargs["font"] = None
+        if "color" not in kwargs and "color" not in Window.__fps_params:
+            kwargs["color"] = (0, 0, 255)
+        Window.__fps_params.update(**kwargs)
+
+    @staticmethod
+    def fps_is_shown() -> bool:
+        return Window.__show_fps
 
     def show_all(self, without=tuple()):
         for obj in self.objects:
@@ -254,8 +261,6 @@ class Window:
     def event_handler(self):
         for callback in self.mouse_handler_list:
             callback(pygame.mouse.get_pos())
-        for joystick in self.joystick:
-            joystick.update()
         for joy_id in self.joystick_handler_dict:
             if joy_id not in range(len(self.joystick)):
                 continue
@@ -354,15 +359,16 @@ class Window:
 
     def check_sound_status(self):
         Window.update_sound_volume()
-        if not Window.__enable_music:
+        if not Window.__enable_music or (self.bg_music is None and pygame.mixer.get_busy()):
             self.stop_music()
-        elif self.bg_music is not None and (not pygame.mixer.music.get_busy() or Window.actual_music != self.bg_music):
+        elif Window.__enable_music and self.bg_music is not None and (not pygame.mixer.music.get_busy() or Window.actual_music is None or Window.actual_music != self.bg_music):
             self.play_music(self.bg_music)
 
     @staticmethod
     def stop_music():
         pygame.mixer.music.stop()
         pygame.mixer.music.unload()
+        Window.actual_music = None
 
     @staticmethod
     def play_music(filepath: str):

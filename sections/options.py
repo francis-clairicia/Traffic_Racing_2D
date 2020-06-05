@@ -4,13 +4,14 @@ import pygame
 from my_pygame import Window, RectangleShape, Text, ImageButton, Image, CheckBox, Scale
 from my_pygame import GREEN, GREEN_DARK, TRANSPARENT, YELLOW, BLACK
 from constants import FONT, AUDIO, IMG
+from save import SAVE
 
 class Options(Window):
     def __init__(self, master: Window):
-        Window.__init__(self, master=master, bg_color=None)
+        Window.__init__(self, master=master, bg_music=master.bg_music)
         self.bind_joystick_button(0, "B", lambda event: self.stop())
         self.bind_key(pygame.K_ESCAPE, lambda event: self.stop())
-        self.frame = RectangleShape(0.40 * self.width, 0.40 * self.height, GREEN, outline=3)
+        self.frame = RectangleShape(0.60 * self.width, 0.60 * self.height, GREEN, outline=3)
         self.title = Text("Options", font=(FONT["algerian"], 70), color=BLACK)
 
         self.options_font = (FONT["algerian"], 40)
@@ -35,9 +36,10 @@ class Options(Window):
         self.page = 1
 
         ## PAGE 1 ##
+        valid_img = Image(IMG["green_valid"])
         self.text_music = Text("Music:", self.options_font, BLACK)
         self.cb_music = CheckBox(
-            self, 30, 30, TRANSPARENT, image=Image(IMG["green_valid"]),
+            self, 30, 30, TRANSPARENT, image=valid_img,
             state=self.get_music_state(), command=self.set_music_state,
             **params_for_all_buttons, **params_for_option_buttons)
         self.scale_music = Scale(
@@ -47,7 +49,7 @@ class Options(Window):
         )
         self.text_sound = Text("SFX:", self.options_font, BLACK)
         self.cb_sound = CheckBox(
-            self, 30, 30, TRANSPARENT, image=Image(IMG["green_valid"]),
+            self, 30, 30, TRANSPARENT, image=valid_img,
             state=self.get_sound_state(), command=self.set_sound_state,
             **params_for_all_buttons, **params_for_option_buttons)
         self.scale_sound = Scale(
@@ -55,6 +57,11 @@ class Options(Window):
             height=self.cb_sound.height, default=Window.sound_volume() * 100,
             command=lambda self=self: self.set_sound_volume(self.scale_sound.percent)
         )
+        self.text_fps = Text("FPS:", self.options_font, BLACK)
+        self.cb_show_fps = CheckBox(
+            self, 30, 30, TRANSPARENT, image=valid_img,
+            state=Window.fps_is_shown(), command=self.show_fps,
+            **params_for_all_buttons, **params_for_option_buttons)
 
     def on_quit(self):
         self.play_sound(AUDIO["back"])
@@ -71,6 +78,12 @@ class Options(Window):
                     checkbox.set_obj_on_side(on_right=scale)
                 else:
                     checkbox.remove_obj_on_side("on_right")
+            self.text_fps.show()
+            self.cb_show_fps.show()
+        self.save_update()
+
+    def save_update(self):
+        SAVE["fps"] = self.cb_show_fps.state
 
     def place_objects(self):
         self.frame.move(center=self.center)
@@ -85,10 +98,13 @@ class Options(Window):
         self.scale_music.show_value(self.case_font, BLACK, Scale.S_RIGHT)
         self.scale_sound.move(left=self.cb_sound.right + 50, centery=self.cb_sound.centery)
         self.scale_sound.show_value(self.case_font, BLACK, Scale.S_RIGHT)
+        self.text_fps.move(right=self.text_music.right, top=self.text_sound.bottom + 50)
+        self.cb_show_fps.move(left=self.text_fps.right + 10, centery=self.text_fps.centery)
 
     def set_grid(self):
         self.button_back.set_obj_on_side(on_bottom=self.cb_music, on_right=self.cb_music)
         self.cb_music.set_obj_on_side(on_top=self.button_back, on_left=self.button_back, on_bottom=self.cb_sound)
         self.scale_music.set_obj_on_side(on_top=self.button_back, on_left=self.cb_music, on_bottom=self.scale_sound)
-        self.cb_sound.set_obj_on_side(on_top=self.cb_music, on_left=self.button_back)
-        self.scale_sound.set_obj_on_side(on_top=self.scale_music, on_left=self.cb_sound)
+        self.cb_sound.set_obj_on_side(on_top=self.cb_music, on_left=self.button_back, on_bottom=self.cb_show_fps)
+        self.scale_sound.set_obj_on_side(on_top=self.scale_music, on_left=self.cb_sound, on_bottom=self.cb_show_fps)
+        self.cb_show_fps.set_obj_on_side(on_left=self.button_back, on_top=self.cb_sound)

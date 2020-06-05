@@ -2,19 +2,18 @@
 
 import sys
 import pygame
-# from sections.garage import *
+from sections.garage import Garage
 # from sections.gameplay import *
 from sections.options import Options
 from my_pygame import Window, Image, Button, RectangleShape, Text, ImageButton
 from my_pygame import GREEN, GREEN_DARK, GREEN_LIGHT, BLACK, YELLOW
 from constants import IMG, ICON, AUDIO, FONT
+from save import SAVE
 
 class Credits(Window):
-    def __init__(self, master):
-        Window.__init__(self)
-        self.add(master.bg)
-        self.add(master.logo)
-        self.frame = RectangleShape(0.40 * self.width, 0.40 * self.height, GREEN, outline=3)
+    def __init__(self, master: Window):
+        Window.__init__(self, master=master, bg_music=master.bg_music)
+        self.frame = RectangleShape(0.60 * self.width, 0.60 * self.height, GREEN, outline=3)
         title_font = ("calibri", 32, "bold")
         simple_font = ("calibri", 32)
         self.all_text = all_text = list()
@@ -63,10 +62,13 @@ class TrafficRacing(Window):
             "outline": 3,
             "highlight_color": YELLOW
         }
-        self.button_play = Button(self, "Play", font=(FONT["algerian"], 100), **params_for_all_buttons)
+        self.button_play = Button(self, "Play", font=(FONT["algerian"], 100), **params_for_all_buttons, command=self.goto_garage)
         self.button_options = Button(self, "Options", font=(FONT["algerian"], 100), **params_for_all_buttons, command=self.show_options)
         self.button_quit = Button(self, "Quit", font=(FONT["algerian"], 100), **params_for_all_buttons, command=self.stop)
-        self.button_credits = Button(self, "Credits", font=(FONT["algerian"], 50), **params_for_all_buttons, command=Credits(self).mainloop)
+        self.button_credits = Button(self, "Credits", font=(FONT["algerian"], 50), **params_for_all_buttons, command=self.show_credits)
+
+    def on_quit(self):
+        SAVE.dump()
 
     def place_objects(self):
         self.bg.center = self.center
@@ -75,7 +77,7 @@ class TrafficRacing(Window):
         self.button_options.move(top=self.button_play.bottom + 30, centerx=self.button_play.centerx)
         self.button_quit.move(top=self.button_options.bottom + 30, centerx=self.button_options.centerx)
         self.button_credits.move(bottom=self.bottom - 50, left=self.left + 10)
-        self.show_fps(True, font=("calibri", 30), bottom=self.bottom - 50, centerx=self.centerx)
+        self.show_fps(SAVE["fps"], font=("calibri", 30), bottom=self.bottom - 50, centerx=self.centerx)
 
     def set_grid(self):
         self.button_play.set_obj_on_side(on_bottom=self.button_options, on_top=self.button_credits, on_left=self.button_credits)
@@ -84,10 +86,17 @@ class TrafficRacing(Window):
         self.button_credits.set_obj_on_side(on_top=self.button_quit, on_bottom=self.button_play, on_right=self.button_play)
 
     def show_options(self):
-        self.hide_all(without=[self.bg, self.logo])
-        options = Options(self)
-        options.mainloop()
+        self.hide_all(without=[self.bg])
+        Options(self).mainloop()
         self.show_all()
+
+    def show_credits(self):
+        self.hide_all(without=[self.bg])
+        Credits(self).mainloop()
+        self.show_all()
+
+    def goto_garage(self):
+        Garage().mainloop()
 
 def main():
     game = TrafficRacing()

@@ -9,6 +9,7 @@ from .classes import Button, ImageButton, TextButton
 from .classes import Entry, Scale, CheckBox
 from .colors import *
 from .joystick import Joystick
+from .keyboard import Keyboard
 from .loading import Loading
 
 def set_constant_directory(path, *paths, special_msg=None) -> str:

@@ -94,15 +94,15 @@ IMG["environnement"] = {
 # - max_speed en km/h
 # - acceleration en sec (le temps qu'il faut pour passer de 0 à 100km)
 # - maniability en px/s
-# - break en sec (le temps qu'il faut pour passer de max_speed à 0km)
+# - braking en sec (le temps qu'il faut pour passer de max_speed à 0km)
 CAR_INFOS = {
-    1: {"prix": None, "max_speed": 80, "acceleration": 5, "maniability": 60, "break": 4},
-    2: {"prix": 5000, "max_speed": 100, "acceleration": 4.6, "maniability": 72, "break": 3.5},
-    3: {"prix": 12500, "max_speed": 120, "acceleration": 4.2, "maniability": 84, "break": 3.1},
-    4: {"prix": 30000, "max_speed": 150, "acceleration": 3.5, "maniability": 90, "break": 2.8},
-    5: {"prix": 55000, "max_speed": 180, "acceleration": 3.1, "maniability": 102, "break": 2.5},
-    6: {"prix": 85000, "max_speed": 200, "acceleration": 2.8, "maniability": 120, "break": 2.3},
-    7: {"prix": 100000, "max_speed": 230, "acceleration": 2.5, "maniability": 150, "break": 2},
-    8: {"prix": 500000, "max_speed": 260, "acceleration": 2.3, "maniability": 162, "break": 1.7},
-    9: {"prix": 1000000, "max_speed": 280, "acceleration": 2, "maniability": 180, "break": 1.5}
+    1: {"prix": None, "max_speed": 80, "acceleration": 5, "maniability": 60, "braking": 4},
+    2: {"prix": 5000, "max_speed": 100, "acceleration": 4.6, "maniability": 72, "braking": 3.5},
+    3: {"prix": 12500, "max_speed": 120, "acceleration": 4.2, "maniability": 84, "braking": 3.1},
+    4: {"prix": 30000, "max_speed": 150, "acceleration": 3.5, "maniability": 90, "braking": 2.8},
+    5: {"prix": 55000, "max_speed": 180, "acceleration": 3.1, "maniability": 102, "braking": 2.5},
+    6: {"prix": 85000, "max_speed": 200, "acceleration": 2.8, "maniability": 120, "braking": 2.3},
+    7: {"prix": 100000, "max_speed": 230, "acceleration": 2.5, "maniability": 150, "braking": 2},
+    8: {"prix": 500000, "max_speed": 260, "acceleration": 2.3, "maniability": 162, "braking": 1.7},
+    9: {"prix": 1000000, "max_speed": 280, "acceleration": 2, "maniability": 180, "braking": 1.5}
 }
