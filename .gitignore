@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+#Personal files
+joystick.bin
+files/save.bin
+settings.conf
+
 # Distribution / packaging
 .Python
 build/
