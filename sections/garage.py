@@ -332,3 +332,5 @@ class Garage(Window):
     def play(self):
         environment_chooser = EnvironmentChooser(self)
         environment_chooser.mainloop()
+        self.text_money.string = format_number(SAVE["money"])
+        self.text_highscore.string = "Highscore: {}".format(SAVE["highscore"])
