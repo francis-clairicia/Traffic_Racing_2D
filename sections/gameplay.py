@@ -215,7 +215,7 @@ class EndGame(Window):
         Window.__init__(self, master=master, bg_music=master.bg_music)
         self.master = master
         self.bg = RectangleShape(*self.size, (0, 0, 0, 170))
-        self.text_score = Text(f"Your score\n{score}", (FONT["algerian"], 120), YELLOW, justify="center")
+        self.text_score = Text(f"Your score\n{score}", (FONT["algerian"], 90), YELLOW, justify="center")
         self.img_highscore = Image(IMG["new_high_score"], width=150)
         if score > SAVE["highscore"]:
             SAVE["highscore"] = score
@@ -249,7 +249,7 @@ class EndGame(Window):
         )
 
         params_for_all_buttons = {
-            "font": (FONT["algerian"], 80),
+            "font": (FONT["algerian"], 50),
             "bg": GREEN,
             "hover_bg": GREEN_LIGHT,
             "active_bg": GREEN_DARK,
@@ -402,8 +402,8 @@ class Gameplay(Window):
         self.infos_time_100.move(left=10, bottom=self.road.top - 10)
         self.infos_time_opposite.move(left=10, top=self.road.bottom + 10)
         self.car.move(centery=self.road.centery, left=50)
-        self.env_up.move(centerx=self.centerx, centery=self.centery * 0.5)
-        self.env_down.move(centerx=self.centerx, centery=self.centery * 1.5)
+        self.env_up.move(centerx=self.centerx, centery=(self.top + self.road[0].top) / 2)
+        self.env_down.move(centerx=self.centerx, centery=(self.road[-1].bottom + self.bottom) / 2)
 
     def update(self):
         if self.paused:

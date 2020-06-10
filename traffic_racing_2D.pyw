@@ -77,7 +77,7 @@ class TrafficRacing(Window):
         self.logo.midtop = self.midtop
         self.menu_buttons.center = self.centerx, self.centery + self.menu_buttons[0].height
         self.button_credits.move(bottom=self.bottom - 50, left=self.left + 10)
-        self.show_fps(SAVE["fps"], font=("calibri", 30), bottom=self.bottom - 50, centerx=self.centerx)
+        self.show_fps(SAVE["fps"], font=("calibri", 30), top=self.top + 10, centerx=self.centerx)
 
     def set_grid(self):
         for button in self.menu_buttons:

@@ -306,7 +306,7 @@ class Button(RectangleShape, Clickable):
 class ImageButton(Button):
 
     def __init__(self, master, image: Image, hover_img: Optional[Image] = None, active_img: Optional[Image] = None, show_bg=False, offset=3, **kwargs):
-        Button.__init__(self, master, str(), img=image, compound="center", **kwargs)
+        Button.__init__(self, master, " ", img=image, compound="center", **kwargs)
         self.default_img = self.img
         self.hover_img = hover_img
         self.active_img = active_img
