@@ -7,6 +7,7 @@ GRAY_DARK = (135, 135, 135)
 GRAY_LIGHT = (175, 175, 175)
 RED = (255, 0, 0)
 RED_DARK = (195, 0, 0)
+RED_LIGHT = (255, 100, 100)
 ORANGE = (255, 175, 0)
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
@@ -62,8 +63,8 @@ class Color:
     def __str__(self):
         return repr(self)
 
-    def get(self, with_alpha=False):
-        if with_alpha:
+    def get(self):
+        if self.alpha < 255:
             return (self.red, self.green, self.blue, self.alpha)
         return (self.red, self.green, self.blue)
 
@@ -73,10 +74,13 @@ class Color:
 
     @red.setter
     def red(self, value):
-        if (0 <= int(value) <= 255) is False:
-            raise ValueError("Color must be in range [0, 255]")
-        self.__red = int(value)
-        self._calculate_hsv_from_rgb()
+        value = int(value)
+        if value < 0:
+            value = 0
+        elif value > 255:
+            value = 255
+        self.__red = value
+        self.__calculate_hsv_from_rgb()
 
     @property
     def green(self):
@@ -84,10 +88,13 @@ class Color:
 
     @green.setter
     def green(self, value):
-        if (0 <= int(value) <= 255) is False:
-            raise ValueError("Color must be in range [0, 255]")
-        self.__green = int(value)
-        self._calculate_hsv_from_rgb()
+        value = int(value)
+        if value < 0:
+            value = 0
+        elif value > 255:
+            value = 255
+        self.__green = value
+        self.__calculate_hsv_from_rgb()
 
     @property
     def blue(self):
@@ -95,10 +102,13 @@ class Color:
 
     @blue.setter
     def blue(self, value):
-        if (0 <= int(value) <= 255) is False:
-            raise ValueError("Color must be in range [0, 255]")
-        self.__blue = int(value)
-        self._calculate_hsv_from_rgb()
+        value = int(value)
+        if value < 0:
+            value = 0
+        elif value > 255:
+            value = 255
+        self.__blue = value
+        self.__calculate_hsv_from_rgb()
 
     @property
     def alpha(self):
@@ -106,9 +116,12 @@ class Color:
 
     @alpha.setter
     def alpha(self, value):
-        if (0 <= int(value) <= 255) is False:
-            raise ValueError("Color must be in range [0, 255]")
-        self.__alpha = int(value)
+        value = int(value)
+        if value < 0:
+            value = 0
+        elif value > 255:
+            value = 255
+        self.__alpha = value
 
     @property
     def h(self):
@@ -121,7 +134,7 @@ class Color:
         while value >= 360:
             value -= 360
         self.__hue = value
-        self._calculate_rgb_from_hsv()
+        self.__calculate_rgb_from_hsv()
 
     @property
     def s(self):
@@ -134,7 +147,7 @@ class Color:
         elif value > 100:
             value = 100
         self.__saturation = value
-        self._calculate_rgb_from_hsv()
+        self.__calculate_rgb_from_hsv()
 
     @property
     def v(self):
@@ -147,7 +160,7 @@ class Color:
         elif value > 100:
             value = 100
         self.__value = value
-        self._calculate_rgb_from_hsv()
+        self.__calculate_rgb_from_hsv()
 
     @property
     def hex(self):
@@ -156,7 +169,7 @@ class Color:
             value += "{0:0>2X}".format(color)
         return value
 
-    def _calculate_hsv_from_rgb(self):
+    def __calculate_hsv_from_rgb(self):
         r = self.red / 255
         g = self.green / 255
         b = self.blue / 255
@@ -172,7 +185,7 @@ class Color:
         self.__saturation = 0 if c_max == 0 else round(100 * delta / c_max)
         self.__value = round(100 * c_max)
 
-    def _calculate_rgb_from_hsv(self):
+    def __calculate_rgb_from_hsv(self):
         h = self.h
         s = self.s / 100
         v = self.v / 100
@@ -198,3 +211,13 @@ class Color:
         self.__red = round((r + m) * 255)
         self.__green = round((g + m) * 255)
         self.__blue = round((b + m) * 255)
+
+def change_brightness(color: tuple, value: int) -> tuple:
+    c = Color(*color)
+    c.v += value
+    return c.get()
+
+def change_saturation(color: tuple, value: int) -> tuple:
+    c = Color(*color)
+    c.s += value
+    return c.get()

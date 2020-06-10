@@ -2,12 +2,6 @@
 
 from my_pygame import set_constant_directory, set_constant_file
 
-# Colors
-SUB = (140, 255, 140)
-SAND = (223, 232, 49)
-SNOW = (224, 224, 224)
-AUTUMN = (194, 255, 38)
-
 #Dossiers
 IMG_FOLDER = set_constant_directory("files", "img")
 AUDIO_FOLDER = set_constant_directory("files", "sounds")
@@ -31,13 +25,14 @@ IMG = {
     "right_arrow": set_constant_file(IMG_FOLDER, "fleche_garage_droite.png"),
     "right_arrow_hover": set_constant_file(IMG_FOLDER, "fleche_garage_droite_over.png"),
     "piece": set_constant_file(IMG_FOLDER, "piece.png"),
-    "cadenas": set_constant_file(IMG_FOLDER, "cadenas.png"),
-    "explosion": set_constant_file(IMG_FOLDER, "explosion.png"),
+    "padlock": set_constant_file(IMG_FOLDER, "cadenas.png"),
+    "crash": set_constant_file(IMG_FOLDER, "explosion.png"),
     "new_high_score": set_constant_file(IMG_FOLDER, "high_score.png")
 }
 
 FONT = {
-    "algerian": set_constant_file(FONT_FOLDER, "Algerian Regular.ttf")
+    "algerian": set_constant_file(FONT_FOLDER, "Algerian Regular.ttf"),
+    "cooperblack": set_constant_file(FONT_FOLDER, "COOPBL.ttf")
 }
 
 ########## Musiques/Sons ##########
@@ -81,28 +76,28 @@ for i in range(nb_traffic_car):
             set_constant_file(IMG_FOLDER, "gameplay", "traffic", f"cars_{i}_{sens}-2.png")
         )
 
-########## Image environnement ##########
-IMG["environnement"] = {
-    "banlieue": set_constant_file(IMG_FOLDER, "arbre.png"),
-    "desert": set_constant_file(IMG_FOLDER, "cactus.png"),
-    "automne": set_constant_file(IMG_FOLDER, "arbre_automne.png"),
-    "neige": set_constant_file(IMG_FOLDER, "sapin.png")
+########## Environnements ##########
+ENVIRONMENT = {
+    "suburb": {"img": set_constant_file(IMG_FOLDER, "arbre.png"), "color": (140, 255, 140)},
+    "desert": {"img": set_constant_file(IMG_FOLDER, "cactus.png"), "color": (223, 232, 49)},
+    "autumn": {"img": set_constant_file(IMG_FOLDER, "arbre_automne.png"), "color": (194, 255, 38)},
+    "snow":   {"img": set_constant_file(IMG_FOLDER, "sapin.png"), "color": (224, 224, 224)}
 }
 
 ########## Infos sur les véhicules ##########
-# - prix en $
+# - price en $
 # - max_speed en km/h
 # - acceleration en sec (le temps qu'il faut pour passer de 0 à 100km)
 # - maniability en px/s
 # - braking en sec (le temps qu'il faut pour passer de max_speed à 0km)
 CAR_INFOS = {
-    1: {"prix": None, "max_speed": 80, "acceleration": 5, "maniability": 60, "braking": 4},
-    2: {"prix": 5000, "max_speed": 100, "acceleration": 4.6, "maniability": 72, "braking": 3.5},
-    3: {"prix": 12500, "max_speed": 120, "acceleration": 4.2, "maniability": 84, "braking": 3.1},
-    4: {"prix": 30000, "max_speed": 150, "acceleration": 3.5, "maniability": 90, "braking": 2.8},
-    5: {"prix": 55000, "max_speed": 180, "acceleration": 3.1, "maniability": 102, "braking": 2.5},
-    6: {"prix": 85000, "max_speed": 200, "acceleration": 2.8, "maniability": 120, "braking": 2.3},
-    7: {"prix": 100000, "max_speed": 230, "acceleration": 2.5, "maniability": 150, "braking": 2},
-    8: {"prix": 500000, "max_speed": 260, "acceleration": 2.3, "maniability": 162, "braking": 1.7},
-    9: {"prix": 1000000, "max_speed": 280, "acceleration": 2, "maniability": 180, "braking": 1.5}
+    1: {"price": None, "max_speed": 80, "acceleration": 5, "maniability": 260, "braking": 4},
+    2: {"price": 5000, "max_speed": 100, "acceleration": 4.6, "maniability": 272, "braking": 3.5},
+    3: {"price": 12500, "max_speed": 120, "acceleration": 4.2, "maniability": 284, "braking": 3.1},
+    4: {"price": 30000, "max_speed": 150, "acceleration": 3.5, "maniability": 290, "braking": 2.8},
+    5: {"price": 55000, "max_speed": 180, "acceleration": 3.1, "maniability": 302, "braking": 2.5},
+    6: {"price": 85000, "max_speed": 200, "acceleration": 2.8, "maniability": 320, "braking": 2.3},
+    7: {"price": 100000, "max_speed": 230, "acceleration": 2.5, "maniability": 350, "braking": 2},
+    8: {"price": 500000, "max_speed": 260, "acceleration": 2.3, "maniability": 362, "braking": 1.7},
+    9: {"price": 1000000, "max_speed": 280, "acceleration": 2, "maniability": 380, "braking": 1.5}
 }

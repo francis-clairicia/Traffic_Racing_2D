@@ -6,7 +6,7 @@ from .colors import WHITE, BLACK
 
 class Loading(Window):
     def __init__(self, text="Loading...", font=("calibri", 300), bg=BLACK, opening=True, ending=True, side_opening="left", side_ending="right"):
-        Window.__init__(self)
+        Window.__init__(self, bg_color=None)
         self.master = None
         speed = 50
         self.animation_opening = {
@@ -45,7 +45,7 @@ class Loading(Window):
             self.rectangle.move(**self.animation_init_opening[self.side_opening])
             self.text.move(center=self.rectangle.center)
             self.after(0, self.animation_opening[self.side_opening])
-            self.mainloop(fill_bg=False)
+            self.mainloop()
 
     def hide(self, master: Window):
         self.master = master
@@ -77,7 +77,7 @@ class Loading(Window):
         self.rectangle.rect.move_ip(x_offset, y_offset)
         self.text.move(center=self.rectangle.center)
         self.master.draw_screen()
-        if not self.window_rect.colliderect(self.rectangle.rect):
+        if not self.rect.colliderect(self.rectangle.rect):
             self.stop()
         else:
             self.after(10, lambda x=x_offset, y=y_offset: self._hide_animation(x, y))

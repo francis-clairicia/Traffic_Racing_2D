@@ -1,25 +1,334 @@
 # -*- coding: Utf-8 -*
 
 import pygame
-from my_pygame import Window, ImageButton, Image
-from my_pygame import GRAY, YELLOW
-from constants import IMG, AUDIO
+from my_pygame import Window, Button, ImageButton, Image, Clickable, Text, ProgressBar, RectangleShape, ButtonListHorizontal
+from my_pygame import GRAY, GRAY_LIGHT, YELLOW, GREEN, GREEN_LIGHT, GREEN_DARK, TRANSPARENT
+from my_pygame import change_brightness
+from constants import IMG, AUDIO, FONT, CAR_INFOS, ENVIRONMENT
 from save import SAVE
+from .gameplay import Gameplay, format_number
+
+class CarViewer(Image, Clickable):
+    def __init__(self, master, car_id: int, **kwargs):
+        Image.__init__(self, IMG["garage_cars"][car_id], height=150)
+        Clickable.__init__(self, master, **kwargs, highlight_thickness=0)
+
+        self.__id = car_id
+        self.__all_max_speed = list()
+        self.__all_acceleration = list()
+        self.__all_maniablities = list()
+        self.__all_braking = list()
+        for infos in CAR_INFOS.values():
+            self.__all_max_speed.append(infos["max_speed"])
+            self.__all_acceleration.append(infos["acceleration"])
+            self.__all_maniablities.append(infos["maniability"])
+            self.__all_braking.append(infos["braking"])
+
+        self.master = master
+        self.master.bind_event(pygame.KEYDOWN, self.on_click_down)
+        self.master.bind_event(pygame.KEYUP, self.on_click_up)
+        self.master.bind_event(pygame.JOYHATMOTION, self.on_click_down)
+        self.master.bind_event(pygame.JOYHATMOTION, self.on_click_up)
+        self.disable_mouse()
+        self.disable_key_joy()
+
+    @property
+    def id(self):
+        return self.__id
+
+    @id.setter
+    def id(self, value: int):
+        self.__id = int(value)
+        if self.__id < 1:
+            self.__id = 1
+        elif self.__id > len(self):
+            self.__id = len(self)
+        self.load(IMG["garage_cars"][self.__id], keep_height=True)
+
+    @property
+    def max_speed(self) -> int:
+        return round(max(self.__all_max_speed) * 1.10)
+
+    @property
+    def min_acceleration(self) -> int:
+        return round(min(self.__all_acceleration) * 0.90)
+
+    @property
+    def max_maniability(self) -> int:
+        return round(max(self.__all_maniablities) * 1.30)
+
+    @property
+    def min_braking(self) -> int:
+        return round(min(self.__all_braking) * 0.80)
+
+    def __getitem__(self, key: str):
+        return CAR_INFOS[self.id][key]
+
+    def __len__(self):
+        return len(CAR_INFOS)
+
+    def on_focus_set(self):
+        self.master.left_arrow.focus_set()
+        self.master.right_arrow.focus_set()
+
+    def on_focus_leave(self):
+        self.master.left_arrow.focus_leave()
+        self.master.right_arrow.focus_leave()
+
+    def on_click_down(self, event: pygame.event.Event):
+        if not self.has_focus():
+            return
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT and self.master.left_arrow.is_shown():
+                self.master.left_arrow.active = True
+            elif event.key == pygame.K_RIGHT and self.master.right_arrow.is_shown():
+                self.master.right_arrow.active = True
+        elif event.type == pygame.JOYHATMOTION:
+            if event.value[0] == -1 and self.master.left_arrow.is_shown():
+                self.master.left_arrow.active = True
+            elif event.value[0] == 1 and self.master.right_arrow.is_shown():
+                self.master.right_arrow.active = True
+
+    def on_click_up(self, event: pygame.event.Event):
+        if not self.has_focus():
+            return
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT and self.master.left_arrow.is_shown():
+                self.master.left_arrow.active = False
+                self.play_on_click_sound()
+                self.decrease_id()
+            elif event.key == pygame.K_RIGHT and self.master.right_arrow.is_shown():
+                self.master.right_arrow.active = False
+                self.play_on_click_sound()
+                self.increase_id()
+        elif event.type == pygame.JOYHATMOTION:
+            if self.master.left_arrow.active and event.value[0] == 0 and self.master.left_arrow.is_shown():
+                self.master.left_arrow.active = False
+                self.play_on_click_sound()
+                self.decrease_id()
+            elif self.master.right_arrow.active and event.value[0] == 0 and self.master.right_arrow.is_shown():
+                self.master.right_arrow.active = False
+                self.play_on_click_sound()
+                self.increase_id()
+
+    def increase_id(self):
+        self.id += 1
+
+    def decrease_id(self):
+        self.id -= 1
+
+class ConfirmPayement(Window):
+    def __init__(self, master):
+        Window.__init__(self, master=master, bg_music=master.bg_music)
+        self.bg = RectangleShape(*self.size, (0, 0, 0, 170))
+        self.frame = RectangleShape(0.50 * self.width, 0.50 * self.height, GREEN, outline=3)
+        self.text = Text("Are you sure you want\nto buy this car ?", (FONT["algerian"], 60), justify=Text.T_CENTER)
+        self.button_yes = Button(
+            self, "Yes", self.text.font,
+            bg=GREEN, hover_bg=GREEN_LIGHT, active_bg=GREEN_DARK,
+            hover_sound=AUDIO["select"], on_click_sound=AUDIO["validate"],
+            highlight_color=YELLOW, command=self.buy
+        )
+        self.button_red_cross = ImageButton(
+            self, Image(IMG["red_cross"]),
+            active_img=Image(IMG["red_cross_hover"]),
+            hover_sound=AUDIO["select"], on_click_sound=AUDIO["back"],
+            command=self.stop, highlight_color=YELLOW
+        )
+        self.buyed = False
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=AUDIO["back"]))
+        self.bind_joystick_button(0, "B", lambda event: self.stop(sound=AUDIO["back"]))
+
+    def place_objects(self):
+        self.text.center = self.frame.center = self.center
+        self.button_red_cross.move(left=self.frame.left + 5, top=self.frame.top + 5)
+        self.button_yes.move(bottom=self.frame.bottom - 10, centerx=self.frame.centerx)
+
+    def set_grid(self):
+        self.button_red_cross.set_obj_on_side(on_bottom=self.button_yes)
+        self.button_yes.set_obj_on_side(on_top=self.button_red_cross)
+
+    def buy(self):
+        self.buyed = True
+        self.stop()
+
+class EnvironmentChooser(Window):
+    def __init__(self, master):
+        Window.__init__(self, bg_color=master.bg_color, bg_music=master.bg_music)
+        params_for_button = {
+            "highlight_color": YELLOW,
+            "hover_sound": AUDIO["select"],
+            "on_click_sound": AUDIO["back"]
+        }
+        self.master = master
+        self.button_back = ImageButton(self, Image(IMG["blue_arrow"]), **params_for_button, command=self.stop)
+
+        for obj in [master.text_highscore, master.text_money]:
+            self.add(obj)
+
+        self.text_title = Text("ENVIRONMENT", (FONT["algerian"], 90), GREEN_DARK, shadow_x=2, shadow_y=2)
+        self.environment = ButtonListHorizontal(offset=15)
+        self.texts = list()
+        for name, infos in ENVIRONMENT.items():
+            b = Button(
+                self, str(), img=Image(infos["img"], width=180, height=180),
+                outline=3, command=lambda env=name: self.play(env), bg=infos["color"],
+                hover_bg=None, active_bg=change_brightness(infos["color"], -20),
+                hover_sound=AUDIO["select"], on_click_sound=AUDIO["validate"], highlight_color=YELLOW
+            )
+            b.set_size(200)
+            t = Text(name.upper(), (FONT["algerian"], 50), GREEN_DARK, shadow_x=2, shadow_y=2)
+            self.add(t)
+            self.texts.append(t)
+            self.environment.add_object(b)
+
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=self.button_back.on_click_sound))
+        self.bind_joystick_button(0, "B", lambda event: self.stop(sound=self.button_back.on_click_sound))
+
+    def place_objects(self):
+        self.button_back.topleft = (5, 5)
+        self.environment.center = self.center
+        self.text_title.move(centerx=self.environment.centerx, bottom=self.environment.top - 10)
+        for text, button in zip(self.texts, self.environment):
+            text.move(top=button.bottom + 5, centerx=button.centerx)
+
+    def set_grid(self):
+        for i, button in enumerate(self.environment):
+            if i == 0:
+                self.button_back.set_obj_on_side(on_bottom=button, on_right=button)
+                button.set_obj_on_side(on_left=self.button_back)
+                button.focus_set()
+            button.set_obj_on_side(on_top=self.button_back)
+
+    def play(self, env: str):
+        gameplay = Gameplay(self.master.car_viewer.id, ENVIRONMENT[env])
+        gameplay.mainloop()
+        if not gameplay.go_to_garage:
+            self.master.stop()
+        else:
+            self.master.car_viewer.focus_set()
+        self.stop()
 
 class Garage(Window):
 
     def __init__(self):
         Window.__init__(self, bg_color=GRAY, bg_music=AUDIO["garage"])
         params_for_all_buttons = {
+            "bg": GREEN,
+            "hover_bg": GREEN_LIGHT,
+            "active_bg": GREEN_DARK,
             "highlight_color": YELLOW,
             "hover_sound": AUDIO["select"],
         }
-        self.button_back = ImageButton(self, Image(IMG["blue_arrow"]), **params_for_all_buttons, command=self.stop)
-        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop())
-        self.bind_joystick_button(0, "B", lambda event: self.stop())
+        params_for_button_except_back = {
+            "on_click_sound": AUDIO["validate"],
+            "disabled_sound": AUDIO["block"],
+            "disabled_bg": GRAY_LIGHT,
+        }
+        params_for_button_except_back.update(params_for_all_buttons)
+        params_for_car_viewer = {k: params_for_button_except_back[k] for k in ["hover_sound", "on_click_sound"]}
+        self.button_back = ImageButton(self, Image(IMG["blue_arrow"]), **params_for_all_buttons, on_click_sound=AUDIO["back"], command=self.stop)
+        self.car_viewer = CarViewer(self, SAVE["car"], **params_for_car_viewer)
+
+        size_progress_bar = (300, 30)
+        self.speed_bar = ProgressBar(*size_progress_bar, TRANSPARENT, GREEN)
+        self.maniability_bar = ProgressBar(*size_progress_bar, TRANSPARENT, GREEN)
+        self.braking_bar = ProgressBar(*size_progress_bar, TRANSPARENT, GREEN)
+
+        self.left_arrow = ImageButton(
+            self, Image(IMG["left_arrow"]), active_img=Image(IMG["left_arrow_hover"]),
+            **params_for_button_except_back, command=self.car_viewer.decrease_id
+        )
+        self.right_arrow = ImageButton(
+            self, Image(IMG["right_arrow"]), active_img=Image(IMG["right_arrow_hover"]),
+            **params_for_button_except_back, command=self.car_viewer.increase_id
+        )
+        for arrow in [self.left_arrow, self.right_arrow]:
+            arrow.take_focus(False)
+        self.button_price = Button(
+            self, str(), font=(FONT["algerian"], 40), img=Image(IMG["piece"], size=40), compound="right",
+            command=self.buy_car, **params_for_button_except_back
+        )
+        self.button_play = Button(
+            self, "Play", font=(FONT["algerian"], 70), command=self.play,
+            **params_for_button_except_back
+        )
+        self.text_money = Text(format_number(SAVE["money"]), (FONT["algerian"], 50), YELLOW, img=Image(IMG["piece"], height=40), compound="right")
+        self.text_highscore = Text("Highscore: {}".format(SAVE["highscore"]), (FONT["algerian"], 50), YELLOW)
+        self.padlock = Image(IMG["padlock"])
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=self.button_back.on_click_sound))
+        self.bind_joystick_button(0, "B", lambda event: self.stop(sound=self.button_back.on_click_sound))
+
+    def update(self):
+        self.left_arrow.set_visibility(self.car_viewer.id > 1)
+        self.right_arrow.set_visibility(self.car_viewer.id < len(self.car_viewer))
+        if Clickable.MODE != Clickable.MODE_MOUSE:
+            if self.car_viewer.has_focus():
+                self.car_viewer.on_focus_set()
+        if not SAVE["owned_cars"][self.car_viewer.id]:
+            self.padlock.show()
+            price = self.car_viewer["price"]
+            if isinstance(price, int):
+                self.button_price.show()
+                self.button_price.set_text(format_number(price))
+                self.button_price.state = Button.NORMAL if SAVE["money"] >= price else Button.DISABLED
+            else:
+                self.button_price.hide()
+            self.button_play.state = Button.DISABLED
+        else:
+            self.padlock.hide()
+            self.button_price.hide()
+            self.button_play.state = Button.NORMAL
+            SAVE["car"] = self.car_viewer.id
+        max_s = self.car_viewer.max_speed
+        min_a = self.car_viewer.min_acceleration
+        max_m = self.car_viewer.max_maniability
+        min_b = self.car_viewer.min_braking
+        s = self.car_viewer["max_speed"]
+        a = self.car_viewer["acceleration"]
+        m = self.car_viewer["maniability"]
+        b = self.car_viewer["braking"]
+        self.speed_bar.percent = (s + min_a)/(max_s + a)
+        self.maniability_bar.percent = m / max_m
+        self.braking_bar.percent = min_b / b
 
     def place_objects(self):
         self.button_back.topleft = (5, 5)
+        self.car_viewer.move(center=self.center)
+        self.padlock.center = self.car_viewer.center
 
-    def on_quit(self):
-        self.play_sound(AUDIO["back"])
+        self.braking_bar.move(bottom=self.car_viewer.top - 40, centerx=self.car_viewer.centerx + 100)
+        self.maniability_bar.move(bottom=self.braking_bar.top - 10, centerx=self.car_viewer.centerx + 100)
+        self.speed_bar.move(bottom=self.maniability_bar.top - 10, centerx=self.car_viewer.centerx + 100)
+
+        self.speed_bar.show_label("Speed/Acc.", ProgressBar.S_LEFT, font=(FONT["algerian"], 40))
+        self.maniability_bar.show_label("Maniability", ProgressBar.S_LEFT, font=(FONT["algerian"], 40))
+        self.braking_bar.show_label("Braking", ProgressBar.S_LEFT, font=(FONT["algerian"], 40))
+
+        self.left_arrow.move(left=self.left + 50, centery=self.centery)
+        self.right_arrow.move(right=self.right - 50, centery=self.centery)
+        self.button_price.move(centerx=self.centerx, top=self.car_viewer.bottom + 25)
+        self.button_play.move(bottom=self.bottom - 50, right=self.right - 10)
+
+        self.text_money.move(top=5, right=self.right - 10)
+        self.text_highscore.move(bottom=self.bottom - 50, left=5)
+
+    def set_grid(self):
+        self.button_back.set_obj_on_side(on_bottom=self.car_viewer)
+        self.car_viewer.set_obj_on_side(on_top=self.button_back, on_bottom=self.button_price)
+        self.button_price.set_obj_on_side(on_top=self.car_viewer, on_bottom=self.button_play)
+        self.button_play.set_obj_on_side(on_top=self.button_price)
+
+    def buy_car(self):
+        confirm_window = ConfirmPayement(self)
+        confirm_window.mainloop()
+        if confirm_window.buyed:
+            SAVE["money"] -= self.car_viewer["price"]
+            SAVE["owned_cars"][self.car_viewer.id] = True
+            self.text_money.string = format_number(SAVE["money"])
+            if Clickable.MODE != Clickable.MODE_MOUSE:
+                self.car_viewer.focus_set()
+
+    def play(self):
+        environment_chooser = EnvironmentChooser(self)
+        environment_chooser.mainloop()

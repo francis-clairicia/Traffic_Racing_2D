@@ -1,636 +1,570 @@
 # -*- coding: Utf-8 -*
 
-from modules.init import *
-from modules.classes import *
+import random
+from typing import Dict, Union
+import pygame
+from my_pygame import Window, RectangleShape, Text, Image, Button
+from my_pygame import DrawableListHorizontal, DrawableListVertical
+from my_pygame import ButtonListHorizontal, ButtonListVertical
+from my_pygame import Sprite, CountDown, Clock
+from my_pygame import GRAY, WHITE, BLACK, YELLOW, GREEN, GREEN_LIGHT, GREEN_DARK
+from constants import IMG, AUDIO, FONT, CAR_INFOS
+from save import SAVE
+from .options import Options
 
-class Gameplay:
-	
-	def __init__(self, jeu):
-		self.jeu = jeu
-		
-		#Police d'écriture
-		font = "cooperblack"
-		self.gameplay_font = fonts(font, 45)
-		self.gameplay_font_2 = fonts(font, 90)
-		
-		#Autres images
-		self.fleche_verte = images["fleche_verte"]
-		self.image_explosion = images["explosion"]
-		self.image_nouveau_meilleur_score = images["nouveau_meilleur_score"]
-		self.piece = images["piece"]
-		
-	def run(self, voiture, environnement, options):
-				
-		#Environnement
-		self.couleur_de_fond = environnement["color"]
-		self.image_background = changer_taille_image(environnement["img"], height=110)
-		
-		self.quitter_partie = False
-		while not self.quitter_partie:
-		
-			#Initialisation du jeu
-			self.init_gameplay(voiture)
-			
-			#Sons
-			sons.play("gameplay")
-			
-			while not self.partie_finie:
-				#Afficher le jeu
-				self.afficher_jeu()
-				
-				if self.chrono < self.compte_a_rebours:
-					afficher_texte(fenetre, int(self.compte_a_rebours - self.chrono + 1), self.gameplay_font_2, color=YELLOW, shadow=True, center=ecran.center)
-				
-				pygame.display.flip()
-				
-				if self.chrono >= self.compte_a_rebours:
-					#Recevoir les commandes
-					ACCELERATION_AUTO = sauvegarde["accélération_auto"]
-					ACCELERER = sauvegarde["controles"]["accélérer"]
-					FREINER = sauvegarde["controles"]["freiner"]
-					HAUT = sauvegarde["controles"]["haut"]
-					BAS = sauvegarde["controles"]["bas"]
-					
-					keys = pygame.key.get_pressed()
-					
-					if keys[FREINER]:
-						self.voiture_joueur.freiner()
-					elif (ACCELERATION_AUTO) or (not ACCELERATION_AUTO and keys[ACCELERER]):
-						self.voiture_joueur.accelerer()
-					else:
-						self.voiture_joueur.ralentir(self.fps)
-					if keys[HAUT]:
-						self.voiture_joueur.moveUp()
-					if keys[BAS]:
-						self.voiture_joueur.moveDown()
-					
-					event = pygame.event.poll()
-					self.jeu.quitter = self.quitter_partie = self.partie_finie = fermer_fenetre()
-					screenshot(event, fenetre)
-					
-					if (event.type == KEYUP and event.key == K_ESCAPE) \
-					or (event.type == JOYBUTTONUP and event.button == controller.START):
-						self.afficher_pause(options)
-						tps_perdu = time.time() - self.depart_tps_pause
-						self.tps_perdu_chrono += tps_perdu
-						self.compte_a_rebours = self.chrono + 3
-				
-				# Calculs
-				if not self.pause:
-					self.update_jeu()
-				elif self.chrono >= self.compte_a_rebours:
-					self.pause = False
-					tps_perdu = time.time() - self.depart_tps_pause
-					self.tps_perdu_100 += tps_perdu
-					self.tps_perdu_sens_inverse += tps_perdu
-				
-				#Chrono
-				self.chrono = time.time() - self.depart_chrono - self.tps_perdu_chrono
-			
-			if not self.pause and not self.jeu.quitter:
-				self.partie_terminee()
-	
-	def init_gameplay(self, voiture):
-		#Valeurs
-		self.fps = 60
-		pixel_par_sec = 3.6 #Pour 1km/h
-		
-		#Infos
-		self.partie_finie = self.pause = False
-		self.score = 0
-		self.chrono = 0
-		self.compteur_infos = self.compteur = self.compte_a_rebours = 3
-		self.depart_chrono = time.time()
-		self.depart_tps_100 = self.depart_tps_sens_inverse = 0
-		self.tps_au_dessus_de_100km_h = 0
-		self.tps_dans_le_sens_inverse = 0
-		self.tps_au_dessus_de_100km_h_au_total = 0
-		self.tps_dans_le_sens_inverse_au_total = 0
-		self.tps_perdu_100 = self.tps_perdu_chrono = self.tps_perdu_sens_inverse = 0
-		self.distance_parcourue = 0 #km
-		self.unité_de_distance = 1/(3600 * self.fps) #(en km) Pour 1km/h
-		self.pixel_par_boucle = pixel_par_sec / self.fps
-		self.infos = {k:0 for k in ["score", "vitesse", "distance", "100", "contraire"]}
-		
-		# Lignes de démarquations
-		self.lignes_blanches = []
-		self.bandes_blanches = []
-		self.width_bande_blanche = 50 #px
-		self.height_ligne_blanche = 10 #px
-		ecart_entre_chaque_ligne_blanche = 70 #px
-		self.ecart_entre_chaque_bande_blanche = 20 #px
-		for i in range(5):
-			if not i % 2:
-				if i == 0:
-					y = ecran.centery - (self.height_ligne_blanche + ecart_entre_chaque_ligne_blanche)*2
-				elif i == 4:
-					y = ecran.centery + (self.height_ligne_blanche + ecart_entre_chaque_ligne_blanche)*2
-				else:
-					y = ecran.centery
-				self.lignes_blanches.append(pygame.Rect(ecran.left, y, ecran.width, self.height_ligne_blanche))
-			else:
-				ligne = ecran.left+10
-				if i == 1:
-					y = ecran.centery - (self.height_ligne_blanche + ecart_entre_chaque_ligne_blanche)
-				else:
-					y = ecran.centery + (self.height_ligne_blanche + ecart_entre_chaque_ligne_blanche)
-				bandes = []
-				while ligne < ecran.right:
-					bandes.append(pygame.Rect(ligne, y, self.width_bande_blanche, self.height_ligne_blanche))
-					ligne += self.width_bande_blanche + self.ecart_entre_chaque_bande_blanche
-				self.bandes_blanches.append(bandes)
-		
-		self.position_vehicule = lambda n: (self.lignes_blanches[0].bottom + 5) + (self.height_ligne_blanche + ecart_entre_chaque_ligne_blanche) * n
-		
-		#Voitures
-		self.voiture_perso = pygame.sprite.GroupSingle()
-		self.voitures_traffic = pygame.sprite.Group()
-		
-		# Initialiser l'emplacement du vehicule
-		self.voiture_joueur = VoiturePerso(voiture, self.fps, grp=self.voiture_perso, x=ecran.left+50, centery=self.lignes_blanches[1].centery)
-		self.limite_haut = self.lignes_blanches[0].bottom + 5 # Butée du haut
-		self.limite_bas = self.lignes_blanches[2].top - 5 # Butée du bas
-		
-		# Les éléments environnant
-		self.ecart_entre_chaque_arbre = 400
-		self.env = {"haut":[], "bas":[]}
-		r = pygame.Rect(ecran.topleft, (0, 0))
-		while r.right < ecran.right:
-			y = random.randrange(ecran.top, self.lignes_blanches[0].top - self.image_background.get_height())
-			r1 = self.image_background.get_rect(x=r.right+self.ecart_entre_chaque_arbre, y=y)
-			self.env["haut"].append(r1)
-			
-			y = random.randrange(self.lignes_blanches[2].bottom + 2, ecran.bottom - self.image_background.get_height())
-			r = r1 = self.image_background.get_rect(x=r.right+self.ecart_entre_chaque_arbre, y=y)
-			self.env["bas"].append(r1)
-	
-	def afficher_jeu(self, assombrir=False):
-		clock.tick(self.fps)
-		
-		self.arriere_plan()
-		self.afficher_infos()
-		self.voiture_perso.draw(fenetre)
-		self.voitures_traffic.draw(fenetre)
-		
-		if assombrir:
-			# Assombrir l'écran
-			voile_transparent(fenetre, BLACK, 175)
-		
-		clock.afficher(fenetre, centerx=ecran.centerx, top=ecran.top+10)
-	
-	def update_jeu(self, v=0):
-		self.voiture_perso.update(self, v)
-		self.voitures_traffic.update(self, v if v > 0 else self.voiture_joueur.vitesse)
-		self.update_background(v)
-		if self.chrono >= self.compte_a_rebours:
-			self.update_infos()
-			self.update_traffic()
-		if not v:
-			voiture_collision = self.detecteur_de_collision()
-			if voiture_collision:
-				if (self.voiture_joueur.vitesse >= self.voiture_joueur.vitesse_max * 0.45) or voiture_collision.opposé:
-					self.crash(voiture_collision)
-					self.partie_finie = True
-				else:
-					voiture_collision.kill()
-					self.voiture_joueur.vitesse = 30
-	
-	def arriere_plan(self):		
-		#Couleur de fond
-		fenetre.fill(self.couleur_de_fond)
-		
-		#La route
-		haut = self.lignes_blanches[0].top
-		bas = self.lignes_blanches[2].bottom
-		hauteur = bas - haut
-		dessiner_rectangle(fenetre, GRAY, w=ecran.w, h=hauteur, topleft=self.lignes_blanches[0].topleft)
-		for ligne in self.lignes_blanches:
-			dessiner_rectangle(fenetre, WHITE, ligne)
-		for bandes in self.bandes_blanches:
-			for bande in bandes:
-				dessiner_rectangle(fenetre, WHITE, bande)
-		
-		#Les éléments environnant
-		for i in ["haut", "bas"]:
-			for rect in self.env[i]:
-				afficher_image(fenetre, self.image_background, rect)
-	
-	def update_background(self, vitesse=0):
-		if vitesse == 0:
-			vitesse = self.voiture_joueur.vitesse
-		# Ligne de démarquation
-		for bandes in self.bandes_blanches:
-			for i in range(len(bandes)):
-				bandes[i] = bandes[i].move(- vitesse * self.pixel_par_boucle, 0)
-			if bandes[-1].right <= ecran.right - self.ecart_entre_chaque_bande_blanche:
-				ligne = bandes[-1].right + self.ecart_entre_chaque_bande_blanche
-				bandes.append(pygame.Rect(ligne, bandes[-1].top, self.width_bande_blanche, self.height_ligne_blanche))
-			if bandes[0].right <= ecran.left:
-				del bandes[0]
-		
-		# Les éléments environnant
-		for a in ["haut", "bas"]:
-			for i in range(len(self.env[a])):
-				self.env[a][i] = self.env[a][i].move(- vitesse * self.pixel_par_boucle, 0)
-			if self.env[a][-1].right <= ecran.right - self.ecart_entre_chaque_arbre:
-				if a == "haut":
-					y = random.randrange(ecran.top, self.lignes_blanches[0].top - self.image_background.get_height())
-				else:
-					y = random.randrange(self.lignes_blanches[2].bottom + 2, ecran.bottom - self.image_background.get_height())
-				r = self.image_background.get_rect(x=ecran.right, y=y)
-				self.env[a].append(r)
-			if self.env[a][0].right <= 0:
-				del self.env[a][0]
-	
-	def afficher_infos(self):
-		#Score
-		a = afficher_texte(fenetre, "Score", self.gameplay_font, color=YELLOW, shadow=True, topleft=(ecran.left+10, ecran.top+10))
-		couleur_score = DARK_GREEN if self.score > 0 and (self.voiture_joueur.vitesse >= 100 or self.tps_dans_le_sens_inverse > 0) else YELLOW
-		couleur_ombre = YELLOW if self.score > 0 and (self.voiture_joueur.vitesse >= 100 or self.tps_dans_le_sens_inverse > 0) else BLACK
-		a = afficher_texte(fenetre, self.infos["score"], self.gameplay_font, color=couleur_score, shadow=True, shadow_color=couleur_ombre, x=a.x, y=a.bottom-15)
-		
-		#Temps au dessus de 100 km/h
-		if self.voiture_joueur.vitesse >= 100:
-			a = afficher_texte(fenetre, "Haute vitesse", self.gameplay_font, color=YELLOW, shadow=True, topleft=(a.x, a.bottom+25))
-			a = afficher_texte(fenetre, self.infos["100"][0], self.gameplay_font, color=YELLOW, shadow=True, x=a.x, y=a.bottom-5)
-		
-		#Vitesse
-		a = afficher_texte(fenetre, "Vitesse", self.gameplay_font, color=YELLOW, shadow=True, topright=(ecran.right - 10, ecran.top+10))
-		a = afficher_texte(fenetre, "km/h", self.gameplay_font, color=YELLOW, shadow=True, right=a.right, y=a.bottom-15)
-		a = afficher_texte(fenetre, self.infos["vitesse"], self.gameplay_font, color=YELLOW, shadow=True, right=a.left, y=a.top)
-		
-		#Distance parcourue
-		a = afficher_texte(fenetre, "Distance parcourue", self.gameplay_font, color=YELLOW, shadow=True, topright=(ecran.right - 10, a.bottom+25))
-		a = afficher_texte(fenetre, "km", self.gameplay_font, color=YELLOW, shadow=True, topright=(a.right, a.bottom-15))
-		a = afficher_texte(fenetre, self.infos["distance"], self.gameplay_font, color=YELLOW, shadow=True, topright=(a.left, a.top))
-		
-		#Temps dans le sens inverse
-		if self.voiture_joueur["bottom"] <= ecran.centery:
-			a = afficher_texte(fenetre, "Sens contraire", self.gameplay_font, color=YELLOW, shadow=True, topleft=(ecran.left+10, self.lignes_blanches[2].bottom+10))
-			a = afficher_texte(fenetre, self.infos["contraire"][0], self.gameplay_font, color=YELLOW, shadow=True, x=a.x, y=a.bottom-5)
-	
-	def update_infos(self):
-		#Score
-		if self.voiture_joueur.vitesse > 30:
-			score = 1
-			self.score += self.voiture_joueur.vitesse * (score / self.fps)
-			if self.voiture_joueur.vitesse >= 100:
-				self.score += 150 / self.fps
-			if self.tps_dans_le_sens_inverse > 0:
-				self.score += 120 / self.fps
-		
-		#Distance parcourue
-		self.distance_parcourue += self.voiture_joueur.vitesse * self.unité_de_distance
-		
-		#Temps au dessus de 100 km/h
-		if self.voiture_joueur.vitesse >= 100:
-			if not self.depart_tps_100:
-				self.depart_tps_100 = time.time()
-			self.tps_au_dessus_de_100km_h = time.time() - self.depart_tps_100 - self.tps_perdu_100
-		else:
-			self.tps_au_dessus_de_100km_h_au_total += self.tps_au_dessus_de_100km_h
-			self.tps_au_dessus_de_100km_h = self.tps_perdu_100 = self.depart_tps_100 = 0
-		
-		#Temps dans le sens inverse
-		if self.voiture_joueur["bottom"] <= ecran.centery:
-			if not self.depart_tps_sens_inverse:
-				self.depart_tps_sens_inverse = time.time()
-			self.tps_dans_le_sens_inverse = time.time() - self.depart_tps_sens_inverse - self.tps_perdu_sens_inverse
-		else:
-			self.tps_dans_le_sens_inverse_au_total += self.tps_dans_le_sens_inverse
-			self.tps_dans_le_sens_inverse = self.tps_perdu_sens_inverse = self.depart_tps_sens_inverse = 0
-		
-		self.infos["score"] = round(self.score)
-		self.infos["vitesse"] = round(self.voiture_joueur.vitesse)
-		self.infos["distance"] = round(self.distance_parcourue, 2)
-		self.infos["100"] = round(self.tps_au_dessus_de_100km_h, 1), round(self.tps_au_dessus_de_100km_h_au_total, 1)
-		self.infos["contraire"] = round(self.tps_dans_le_sens_inverse, 1), round(self.tps_dans_le_sens_inverse_au_total, 1)
-		
-	def add_car_to_traffic(self):
-		
-		min = 1 #sec
-		max = 2 #sec
-		
-		P = (max - min)*100 / 280
-		ratio = max - (self.voiture_joueur.vitesse * P / 100)
-		
-		car_list = self.voitures_traffic.sprites()
-		
-		if self.chrono >= self.compteur:
-			self.compteur += ratio
-			if (len(car_list) == 0 or (len(car_list) > 0 and car_list[-1]["right"] < ecran.right-5)) and (self.voiture_joueur.vitesse > 30):
-				if self.score >= 25000:
-					nbre_de_voitures = 3
-				elif self.score >= 10000:
-					nbre_de_voitures = 2
-				else:
-					nbre_de_voitures = 1
-				r = list(range(4))
-				for loop in range(nbre_de_voitures):
-					numero_voiture = random.randint(1,4)
-					v = (35, 35, 40, 50)[numero_voiture - 1]
-					
-					voie = random.choice(r)
-					r.remove(voie)
-					
-					VoitureTraffic(numero_voiture, voie, y=self.position_vehicule(voie), vitesse=v, x=ecran.right, grp=self.voitures_traffic)
-	
-	def update_traffic(self):
-		
-		self.add_car_to_traffic()
-		
-		voies = [list() for i in range(4)]
-		
-		for sprite in self.voitures_traffic:
-			voies[sprite.voie].append(sprite)
-		
-		for k, voie in enumerate(voies, 1):
-			for i in range(1, len(voie)):
-				sprite_1 = voie[i-1]
-				sprite_2 = voie[i]
-				if sprite_2["left"] - sprite_1["right"] < 20:
-					if (k in [1, 2]) and (sprite_1.vitesse < sprite_2.vitesse):
-						sprite_2.vitesse = sprite_1.vitesse
-					elif (k in [3, 4]) and (sprite_1.vitesse > sprite_2.vitesse):
-						sprite_1.vitesse = sprite_2.vitesse
-			try:
-				voiture = voie[0]
-			except IndexError:
-				continue
-			else:
-				if voiture["right"] <= ecran.left:
-					self.voitures_traffic.remove(voiture)
-	
-	def detecteur_de_collision(self):
-		sprite_collision = pygame.sprite.spritecollideany(self.voiture_joueur, self.voitures_traffic, pygame.sprite.collide_mask)
-		return sprite_collision
-	
-	def crash(self, voiture_collision):
-		vitesse_vehicule_au_moment_du_crash = self.voiture_joueur.vitesse
-		self.voiture_joueur.vitesse = voiture_collision.vitesse = 0 #km/h
-		self.voiture_joueur.opposé = voiture_collision.opposé
-		sons.play("crash")
-		while (voiture_collision["right"] > ecran.left) or (self.voiture_joueur["right"] > ecran.left):
-			
-			self.afficher_jeu()
-			
-			try:
-				point_de_collision = list(pygame.sprite.collide_mask(self.voiture_joueur, voiture_collision))
-			except TypeError:
-				pass
-			else:
-				point_de_collision[0] += self.voiture_joueur["x"]
-				point_de_collision[1] += self.voiture_joueur["y"]
-				afficher_image(fenetre, self.image_explosion, center=point_de_collision)
-			
-			pygame.display.flip()
-			pygame.event.pump()
-			
-			self.update_jeu(vitesse_vehicule_au_moment_du_crash)
-	
-	"""-----------------------------------------------------------------------------------------------------------------------------"""
-	
-	def afficher_pause(self, options):
-		self.pause = True
-		
-		widget = Widget()
-		boutons_menu = widget.BoutonsMenu(1, 1, sens="vertical", liste=("REPRENDRE", "OPTIONS", "GARAGE", "QUITTER"), font_style="algerian", height=0.5*ecran.height)
-		
-		self.quitter_menu = False
-		self.depart_tps_pause = time.time()
-		
-		while not self.quitter_menu:
-			
-			self.afficher_jeu(True)
-			boutons_menu.afficher(center=ecran.center)
-			pygame.display.flip()
-			
-			event = pygame.event.poll()
-			widget[event]
-			choix = boutons_menu.event()
-			self.jeu.quitter = self.quitter_partie = self.partie_finie = fermer_fenetre()
-			screenshot(event, fenetre)
-			
-			#Option 'REPRENDRE'
-			if choix == 1:
-				self.quitter_menu = True
-			
-			#Option 'OPTIONS'
-			if choix == 2:
-				options.run(self, "gameplay", lambda: self.afficher_jeu(True), center=ecran.center)
-			
-			#Option 'GARAGE'
-			if choix == 3:
-				self.quitter_menu = self.partie_finie = self.quitter_partie = True
-			
-			#Option 'QUITTER'
-			if choix == 4:
-				self.quitter_menu = self.partie_finie = self.quitter_partie = self.jeu.quitter_garage = True
-	
-	def partie_terminee(self):
-		widget = Widget()
-		boutons_menu = widget.BoutonsMenu(1, 1, sens="horizontal", liste=("RECOMMENCER", "GARAGE", "MENU"), font_style="algerian", width=0.90*ecran.width)
-		
-		#Calcul de l'argent obtenue en tout
-		argent_distance = round(300.40 * self.distance_parcourue)
-		argent_tps_100_kmh = round(12.5 * self.tps_au_dessus_de_100km_h_au_total)
-		argent_tps_sens_inverse = round(21.7 * self.tps_dans_le_sens_inverse_au_total)
-		somme_totale = argent_distance + argent_tps_100_kmh + argent_tps_sens_inverse
-		if sauvegarde["argent"] + somme_totale < 10**9:
-			sauvegarde["argent"] += somme_totale
-		else:
-			sauvegarde["argent"] = 10**9 - 1
-		
-		#Score
-		if self.infos["score"] > sauvegarde["meilleur_score"]:
-			sauvegarde["meilleur_score"] = self.infos["score"]
-			new_high_score = True
-		else:
-			new_high_score = False		
-		score_font = fonts("algerian", 120)
-		money_font = fonts("calibri", 50)
-		donnees_font = fonts("calibri", 50)
-		while True:
-			
-			#Afficher le jeu
-			self.afficher_jeu(True)
-			
-			#Argent totale
-			piece = afficher_image(fenetre, self.piece, size=(35, 35), right=ecran.right-5, top=ecran.top+5)
-			afficher_texte(fenetre, sauvegarde["argent"], money_font, color=YELLOW, right=piece.left-4, centery=piece.centery)
-			
-			#Score
-			score = afficher_texte(fenetre, self.infos["score"], score_font, color=YELLOW, centerx=ecran.centerx, centery=ecran.top+0.25*ecran.height)
-			score = afficher_texte(fenetre, "Votre score", score_font, color=YELLOW, centerx=ecran.centerx, bottom=score.top)
-			if new_high_score:
-				afficher_image(fenetre, self.image_nouveau_meilleur_score,left=score.right-10, bottom=score.top+100)
-			
-			#Argent gagnée
-			taille_piece = (40, 40) #px
-			cadre = dessiner_rectangle(fenetre, BLACK, w=0.75*ecran.w, h=0.45*ecran.h, centerx=ecran.centerx, top=0.75*ecran.centery, outline=1, outline_color=WHITE)
-			#--- Distance parcourue
-			d_p = afficher_texte(fenetre, "Distance parcourue: ", donnees_font, x=cadre.x+5, y=cadre.y+5, color=YELLOW)
-			d_p = afficher_texte(fenetre, self.infos["distance"], donnees_font, color=YELLOW, x=d_p.right, y=d_p.y)
-			d_p = afficher_image(fenetre, self.fleche_verte, x=cadre.centerx+75, centery=d_p.centery-3)
-			d_p = afficher_texte(fenetre, argent_distance, donnees_font, color=YELLOW, x=d_p.right+10, centery=d_p.centery+3)
-			d_p = afficher_image(fenetre, self.piece, size=taille_piece, x=d_p.right+5, centery=d_p.centery-3)
-			#--- Au dessus de 100km/h
-			tps_100 = afficher_texte(fenetre, "Au dessus de 100km/h: ", donnees_font, x=cadre.x+5, y=cadre.y+75, color=YELLOW)
-			tps_100 = afficher_texte(fenetre, self.infos["100"][1], donnees_font, color=YELLOW, x=tps_100.right, y=tps_100.y)
-			tps_100 = afficher_image(fenetre, self.fleche_verte, x=cadre.centerx+75, centery=tps_100.centery-3)
-			tps_100 = afficher_texte(fenetre, argent_tps_100_kmh, donnees_font, color=YELLOW, x=tps_100.right+10, centery=tps_100.centery+3)
-			tps_100 = afficher_image(fenetre, self.piece, size=taille_piece, x=tps_100.right+5, centery=tps_100.centery-3)
-			#--- Sens contraire
-			tps_sens_inv = afficher_texte(fenetre, "Sens contraire: ", donnees_font, x=cadre.x+5, y=cadre.y+145, color=YELLOW)
-			tps_sens_inv = afficher_texte(fenetre, self.infos["contraire"][1], donnees_font, color=YELLOW, x=tps_sens_inv.right, y=tps_sens_inv.y)
-			tps_sens_inv = afficher_image(fenetre, self.fleche_verte, x=cadre.centerx+75, centery=tps_sens_inv.centery-3)
-			tps_sens_inv = afficher_texte(fenetre, argent_tps_sens_inverse, donnees_font, color=YELLOW, x=tps_sens_inv.right+10, centery=tps_sens_inv.centery+3)
-			tps_sens_inv = afficher_image(fenetre, self.piece, size=taille_piece, x=tps_sens_inv.right+5, centery=tps_sens_inv.centery-3)
-			#--- TOTAL
-			total = afficher_texte(fenetre, "TOTAL: ", donnees_font, centerx=cadre.centerx*0.90, bottom=cadre.bottom-10, color=YELLOW)
-			total = afficher_texte(fenetre, somme_totale, donnees_font, color=YELLOW, x=total.right+10, centery=total.centery)
-			total = afficher_image(fenetre, self.piece, size=taille_piece, x=total.right+5, centery=total.centery-3)
-			
-			#Options
-			boutons_menu.afficher(centerx=ecran.centerx, top=cadre.bottom+10)
-			
-			pygame.display.flip()
-			
-			event = pygame.event.poll()
-			widget[event]
-			choix = boutons_menu.event()
-			
-			if fermer_fenetre():
-				self.jeu.quitter = self.quitter_partie = True
-				break
-			screenshot(event, fenetre)
-			
-			#Option 'RECOMMENCER'
-			if choix == 1:
-				break
-			
-			#Option 'GARAGE'
-			if choix == 2:
-				self.quitter_partie = True
-				break
-			#Option 'MENU'
-			if choix == 3:
-				self.jeu.quitter_garage = self.quitter_partie = True
-				break
+def format_number(number: float) -> str:
+    return f"{number:,}".replace(",", " ")
 
-# Création d'une classe 'Voiture' qui contient la construction type d'une voiture
-class Voiture(pygame.sprite.Sprite):
-	def __init__(self, sprites, opposé=False, vitesse=30, grp=None, **kwargs):
-		if grp is not None:
-			pygame.sprite.Sprite.__init__(self, grp)
-		else:
-			pygame.sprite.Sprite.__init__(self)
-		
-		self.sprites = sprites
-		self.id = 0
-		self.image = sprites[0]
-		self.mask = pygame.mask.from_surface(self.image, 140)
-		self.rect = self.image.get_rect(**kwargs)
-		
-		self.vitesse_max = self.vitesse = vitesse
-		self.opposé = opposé
-		self.up = False
-		self.down = False
-	
-	@property
-	def vitesse(self):
-		return self.__vitesse
-	
-	@vitesse.setter
-	def vitesse(self, v):
-		if v < 30:
-			self.__vitesse = 30
-		elif v > self.vitesse_max:
-			self.__vitesse = self.vitesse_max
-		else:
-			self.__vitesse = v
-	
-	def __setitem__(self, clé, valeur):
-		self.rect = modifier_rect(self.rect, **{clé: valeur})
-	
-	def __getitem__(self, clé):
-		return rect_value(self.rect, clé)
-	
-	def update(self, gameplay, v=0):
-		
-		# Frame Voiture
-		limite = 150 #km/h
-		ratio_max = 60 / gameplay.fps
-		ratio_max = 1 if ratio_max > 1 else ratio_max
-		coeff = ratio_max / limite
-		self.ratio = self.vitesse * coeff if self.vitesse < limite else ratio_max
-		self.id += self.ratio
-		if int(self.id) == len(self.sprites):
-			self.id = 0
-		self.image = self.sprites[int(self.id)]
-		
-		# Deplacement verticale
-		try:
-			y = (self.maniabilité)/2 if self.vitesse < 50 else self.maniabilité
-		except AttributeError:
-			pass
-		else:
-			if self.up:
-				self.rect = self.rect.move(0, -y)
-				self.rect.top = gameplay.limite_haut if self.rect.top < gameplay.limite_haut else self.rect.top
-			if self.down:
-				self.rect = self.rect.move(0, y)
-				self.rect.bottom = gameplay.limite_bas if self.rect.bottom > gameplay.limite_bas else self.rect.bottom
-			self.up = False
-			self.down = False
-		
-		# Déplacement horizontal
-		if v > 0:
-			x = self.vitesse * gameplay.pixel_par_boucle if not self.opposé else self.vitesse * (-gameplay.pixel_par_boucle)
-			x -= v * gameplay.pixel_par_boucle
-			self.rect = self.rect.move(x, 0)
+class Car(Sprite):
+    def __init__(self, *img_list):
+        Sprite.__init__(self, *img_list, height=55)
+        self.speed = 30
 
-# Création de la classe 'VoiturePerso' qui est la voiture du joueur
-class VoiturePerso(Voiture):
-	def __init__(self, voiture, fps, **kwargs):
-		Voiture.__init__(self, images["voitures_joueur"][voiture], **kwargs)
-		
-		v = infos_vehicules[voiture]["vitesse_max"]
-		a = infos_vehicules[voiture]["accélération"]
-		m = infos_vehicules[voiture]["maniabilité"]
-		f = infos_vehicules[voiture]["freinage"]
-		
-		self.vitesse_max = v
-		self.acceleration = 100/ (a * fps)
-		self.maniabilité = m / fps
-		self.freinage = v /(f * fps)
-	
-	def accelerer(self):
-		self.vitesse += self.acceleration
-	
-	def freiner(self):
-		self.vitesse -= self.freinage
-	
-	def ralentir(self, fps):
-		ratio = 5 # % de vitesse perdu par secondes
-		self.vitesse *= (1 - (ratio / (100*fps)))
-	
-	def moveUp(self):
-		self.up = True
-	
-	def moveDown(self):
-		self.down = True
-	
+    @property
+    def speed(self):
+        return self.__speed
 
-# Création de la classe 'VoitureTraffic' qui est la voiture rencontré sur
-# la route et servant d'obstacle
-class VoitureTraffic(Voiture):
-	def __init__(self, voiture, voie, **kwargs):
-		if voie < 2:
-			sens = "opposé"
-			opposé = True
-		else:
-			sens = "normal"
-			opposé = False
-		Voiture.__init__(self, images["voitures_traffic"][sens][voiture], opposé, **kwargs)
-		self.voie = voie
+    @speed.setter
+    def speed(self, value: float):
+        value = float(value)
+
+        min_value = 30
+        max_value = 150
+        ratio_min = 10
+        ratio_max = 50
+        ratio_coeff = (ratio_min - ratio_max) / (max_value - min_value)
+
+        if value < 0:
+            value = 0
+        elif hasattr(self, "max_speed") and value > getattr(self, "max_speed"):
+            value = getattr(self, "max_speed")
+        self.__speed = value
+
+        if self.__speed > 0:
+            self.ratio = ratio_coeff * self.__speed + (ratio_max - ratio_coeff * min_value)
+            if self.ratio < ratio_min:
+                self.ratio = ratio_min
+            elif self.ratio > ratio_max:
+                self.ratio = ratio_max
+            if not self.animated():
+                self.start_animation(loop=True)
+        else:
+            self.stop_animation(reset=False)
+
+class PlayerCar(Car):
+    def __init__(self, car_id: int):
+        Car.__init__(self, *IMG["gameplay_cars"][car_id])
+
+        self.__speed_up = False
+        self.__speed_up_offset = 0
+        self.__braking = False
+        self.__braking_offset = 0
+        self.__move = False
+        self.__move_offset = 0
+        self.__speed_clock = Clock()
+        self.__speed_time = 10 #ms
+        self.__move_clock = Clock()
+        self.__move_time = 10 #ms
+        self.__crashed = False
+        self.__speed_on_crash = 0
+
+        infos = CAR_INFOS[car_id]
+        self.max_speed = infos["max_speed"]
+        self.acceleration = infos["acceleration"] * 1000
+        self.maniability = infos["maniability"]
+        self.braking = infos["braking"] * 1000
+
+    def update(self, *args, **kwargs):
+        if not self.__crashed and self.__speed_clock.elapsed_time(self.__speed_time):
+            if self.__braking:
+                self.speed -= (self.__speed_time * self.max_speed / self.braking) * self.__braking_offset
+                if self.speed < 30:
+                    self.speed = 30
+            elif self.__speed_up:
+                self.speed += (self.__speed_time * 100 / self.acceleration) * self.__speed_up_offset
+            else:
+                ratio = 5 # percent
+                lost_speed = self.speed * ratio / 100
+                self.speed -= self.__speed_time * lost_speed / 1000
+                if self.speed < 30:
+                    self.speed = 30
+            self.__speed_up = False
+            self.__braking = False
+        if self.__move_clock.elapsed_time(self.__move_time):
+            if not self.__crashed:
+                if self.__move:
+                    self.move_ip(0, (self.__move_time * self.maniability / 1000) * self.__move_offset)
+                self.__move = False
+            else:
+                pixel_per_ms = args[0]
+                x = (-self.__speed_on_crash) * pixel_per_ms
+                self.move_ip(x, 0)
+
+    def is_crashed(self):
+        return self.__crashed
+
+    def crash(self, car: Car):
+        self.__speed_on_crash = self.speed
+        self.speed = car.speed = 0
+        self.__crashed = True
+
+    def restart(self):
+        self.__crashed = False
+        self.__speed_on_crash = 0
+
+    def speed_up(self, offset=1):
+        if not self.__speed_up:
+            self.__speed_up = True
+            self.__speed_up_offset = offset
+
+    def brake(self, offset=1):
+        if not self.__braking:
+            self.__braking = True
+            self.__braking_offset = offset
+
+    def moveUp(self, offset=1):
+        if not self.__move:
+            self.__move = True
+            self.__move_offset = -offset
+
+    def moveDown(self, offset=1):
+        if not self.__move:
+            self.__move = True
+            self.__move_offset = offset
+
+class TrafficCar(Car):
+    def __init__(self, car_id: int, way: int):
+        side = "opposé" if way in [0, 1] else "normal"
+        Car.__init__(self, *IMG["traffic"][side][car_id])
+        self.way = way
+        self.side = 1 if side == "normal" else -1
+        self.speed = (35, 40, 50, 60)[car_id - 1]
+
+    def update(self, *args, **kwargs):
+        player_car_speed, pixel_per_ms = args
+        x = (self.speed * self.side - player_car_speed) * pixel_per_ms
+        self.move_ip(x, 0)
+
+class Info(Text):
+    def __init__(self, title: str, *args, extension="", round_n=1, **kwargs):
+        Text.__init__(self, str(), *args, **kwargs)
+        self.__title = title
+        self.__extension = extension
+        self.__round_n = round_n
+        self.value = 0
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, value: float):
+        if not isinstance(value, (int, float)):
+            raise TypeError("value must be an integer or a float")
+        self.__value = value
+        msg = self.__title + "\n" + str(round(value, self.__round_n) if self.__round_n > 0 else round(value))
+        if len(self.__extension) > 0:
+            msg += " " + self.__extension
+        self.string = msg
+
+class Pause(Window):
+    def __init__(self, master):
+        Window.__init__(self, master=master, bg_music=master.bg_music)
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop())
+        self.bind_joystick_button(0, "START", lambda event: self.stop())
+        self.bind_joystick_button(0, "B", lambda event: self.stop())
+        self.master = master
+        self.bg = RectangleShape(*self.size, (0, 0, 0, 170))
+        params_for_all_buttons = {
+            "font": (FONT["algerian"], 100),
+            "bg": GREEN,
+            "hover_bg": GREEN_LIGHT,
+            "active_bg": GREEN_DARK,
+            "hover_sound": AUDIO["select"],
+            "on_click_sound": AUDIO["validate"],
+            "outline": 3,
+            "highlight_color": YELLOW
+        }
+        self.menu_buttons = ButtonListVertical(offset=30)
+        self.menu_buttons.add_object(
+            Button(self, "Return", **params_for_all_buttons, command=self.stop),
+            Button(self, "Options", **params_for_all_buttons, command=self.show_options),
+            Button(self, "Garage", **params_for_all_buttons, command=self.return_to_garage),
+            Button(self, "Menu", **params_for_all_buttons, command=self.return_to_menu)
+        )
+
+    def place_objects(self):
+        self.menu_buttons.center = self.center
+
+    def show_options(self):
+        self.hide_all(without=[self.bg])
+        Options(self).mainloop()
+        self.show_all()
+
+    def return_to_garage(self):
+        self.master.go_to_garage = True
+        self.master.stop()
+        self.stop()
+
+    def return_to_menu(self):
+        self.master.stop()
+        self.stop()
+
+class EndGame(Window):
+    def __init__(self, master, score: int, distance: float, time_100: float, time_opposite: float):
+        Window.__init__(self, master=master, bg_music=master.bg_music)
+        self.master = master
+        self.bg = RectangleShape(*self.size, (0, 0, 0, 170))
+        self.text_score = Text(f"Your score\n{score}", (FONT["algerian"], 120), YELLOW, justify="center")
+        self.img_highscore = Image(IMG["new_high_score"], width=150)
+        if score > SAVE["highscore"]:
+            SAVE["highscore"] = score
+        else:
+            self.img_highscore.hide()
+
+        MAX_MONEY = pow(10, 9) - 1
+        money_distance = round(300.40 * distance)
+        money_time_100 = round(12.5 * time_100)
+        money_time_opposite = round(21.7 * time_opposite)
+        money_gained = money_distance + money_time_100 + money_time_opposite
+        total = SAVE["money"] + money_gained
+        SAVE["money"] = MAX_MONEY if total > MAX_MONEY else total
+        self.text_money = Text(format_number(SAVE["money"]), (FONT["algerian"], 50), YELLOW, img=Image(IMG["piece"], height=40), compound="right")
+
+        font = ("calibri", 50)
+        self.frame = RectangleShape(0.75 * self.width, 0.45 * self.height, BLACK, outline=1, outline_color=WHITE)
+        self.text_distance = Text(f"Distance: {distance}", font, WHITE)
+        self.img_green_arrow_distance = Image(IMG["green_arrow"], height=40)
+        self.text_money_distance = Text(money_distance, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+        self.text_time_100 = Text(f"Time up to 100km: {time_100}", font, WHITE)
+        self.img_green_arrow_time_100 = Image(IMG["green_arrow"], height=40)
+        self.text_money_time_100 = Text(money_time_100, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+        self.text_time_opposite = Text(f"Time in opposite side: {time_opposite}", font, WHITE)
+        self.img_green_arrow_time_opposite = Image(IMG["green_arrow"], height=40)
+        self.text_money_time_opposite = Text(money_time_opposite, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+        self.total_money = DrawableListHorizontal(offset=10)
+        self.total_money.add_object(
+            Text("TOTAL: ", font, WHITE),
+            Text(money_gained, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+        )
+
+        params_for_all_buttons = {
+            "font": (FONT["algerian"], 80),
+            "bg": GREEN,
+            "hover_bg": GREEN_LIGHT,
+            "active_bg": GREEN_DARK,
+            "hover_sound": AUDIO["select"],
+            "on_click_sound": AUDIO["validate"],
+            "outline": 3,
+            "highlight_color": YELLOW
+        }
+        self.menu_buttons = ButtonListHorizontal(offset=30)
+        self.menu_buttons.add_object(
+            Button(self, "Restart", **params_for_all_buttons, command=self.restart_game),
+            Button(self, "Garage", **params_for_all_buttons, command=self.return_to_garage),
+            Button(self, "Menu", **params_for_all_buttons, command=self.return_to_menu)
+        )
+
+    def place_objects(self):
+        self.text_money.move(top=5, right=self.right - 10)
+
+        self.text_score.move(centerx=self.centerx, centery=self.top + 0.25 * self.height)
+        self.img_highscore.move(left=self.text_score.right, centery=self.text_score.centery)
+
+        offset = self.frame.height / 6
+        self.frame.move(centerx=self.centerx, top=0.75 * self.centery)
+        self.text_distance.move(left=self.frame.left + 5, top=self.frame.top + 10)
+        self.text_time_100.move(left=self.frame.left + 5, top=self.text_distance.bottom + offset)
+        self.text_time_opposite.move(left=self.frame.left + 5, top=self.text_time_100.bottom + offset)
+        self.img_green_arrow_distance.move(left=self.frame.centerx + 75, centery=self.text_distance.centery)
+        self.img_green_arrow_time_100.move(left=self.frame.centerx + 75, centery=self.text_time_100.centery)
+        self.img_green_arrow_time_opposite.move(left=self.frame.centerx + 75, centery=self.text_time_opposite.centery)
+        self.text_money_distance.move(left=self.img_green_arrow_distance.right + 20, centery=self.text_distance.centery)
+        self.text_money_time_100.move(left=self.img_green_arrow_time_100.right + 20, centery=self.text_time_100.centery)
+        self.text_money_time_opposite.move(left=self.img_green_arrow_time_opposite.right + 20, centery=self.text_time_opposite.centery)
+        self.total_money.move(centerx=self.frame.centerx, bottom=self.frame.bottom - 10)
+
+        self.menu_buttons.move(centerx=self.centerx, bottom=self.bottom - 50)
+
+    def restart_game(self):
+        self.master.restart_game()
+        self.stop()
+
+    def return_to_garage(self):
+        self.master.go_to_garage = True
+        self.master.stop()
+        self.stop()
+
+    def return_to_menu(self):
+        self.master.stop()
+        self.stop()
+
+class Gameplay(Window):
+    def __init__(self, car_id: int, env: Dict[str, Union[str, tuple]]):
+        Window.__init__(self, bg_color=env["color"], bg_music=AUDIO["gameplay"])
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.pause())
+        self.bind_joystick_button(0, "START", lambda event: self.pause())
+
+        font = FONT["cooperblack"]
+
+        # Demaraction lines
+        self.road = DrawableListVertical(bg_color=GRAY, offset=70)
+        self.white_bands = list()
+        self.white_bands_pos = list()
+        white_bands_width = 50 #px
+        white_lines_height = 10 #px
+        for i in range(5):
+            if i % 2 == 0:
+                self.road.add_object(RectangleShape(self.width, white_lines_height, WHITE))
+            else:
+                white_bands = DrawableListHorizontal(offset=20)
+                while white_bands.width < self.width:
+                    white_bands.add_object(RectangleShape(white_bands_width, white_lines_height, WHITE))
+                self.road.add_object(white_bands)
+                self.white_bands.append(white_bands)
+
+        # Environment
+        self.env_up = DrawableListHorizontal(offset=400)
+        self.env_down = DrawableListHorizontal(offset=400)
+        self.env_limits = [(0, 0), (0, 0)]
+        while self.env_up.width < self.width:
+            self.env_up.add_object(Image(env["img"], height=110))
+        while self.env_down.width < self.width:
+            self.env_down.add_object(Image(env["img"], height=110))
+
+        #Infos
+        params_for_infos = {
+            "font": (font, 45),
+            "color": YELLOW,
+            "shadow_x": 3,
+            "shadow_y": 3
+        }
+        self.infos_score = Info("Score", round_n=0, **params_for_infos)
+        self.infos_speed = Info("Speed", extension="km/h", **params_for_infos, justify="right")
+        self.infos_distance = Info("Distance", extension="km", **params_for_infos, justify="right")
+        self.infos_time_100 = Info("High speed", **params_for_infos)
+        self.infos_time_opposite = Info("Opposite side", **params_for_infos)
+        self.clock_time_100 = Clock()
+        self.clock_time_opposite = Clock()
+        self.total_time_100 = self.total_time_opposite = 0
+
+        self.car = PlayerCar(car_id)
+        self.speed = 0
+        self.traffic = list()
+        self.clock_traffic = Clock()
+        self.img_crash = Image(IMG["crash"], size=150)
+        self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow_x=5, shadow_y=5)
+
+        # Default values
+        self.update_clock = Clock()
+        self.update_time = 10 #ms
+        self.pixel_per_sec = 10 # For 1km/h
+        self.pixel_per_ms = self.pixel_per_sec * self.update_time / 1000
+        self.paused = False
+        self.go_to_garage = False
+        self.crashed_car = None
+
+        self.disable_key_joy_focus()
+        self.init_game()
+
+    def pause(self):
+        self.paused = True
+        for car in self.traffic + [self.car]:
+            car.stop_animation(reset=False)
+        pause = Pause(self)
+        pause.mainloop()
+        if self.loop and not self.count_down.is_shown():
+            self.count_down.start(at_end=self.return_to_game)
+            self.set_object_priority(self.count_down, self.end_list)
+
+    def return_to_game(self):
+        self.paused = False
+        for car in self.traffic + [self.car]:
+            car.start_animation(loop=True)
+
+    def init_game(self):
+        self.go_to_garage = False
+        self.paused = False
+        self.crashed_car = None
+        for info in [self.infos_speed, self.infos_score, self.infos_distance, self.infos_time_100, self.infos_time_opposite]:
+            info.value = 0
+        for info in [self.infos_time_100, self.infos_time_opposite]:
+            info.hide()
+        self.total_time_100 = self.total_time_opposite = 0
+        self.count_down.start()
+        self.img_crash.hide()
+
+    def place_objects(self):
+        self.count_down.center = self.road.center = self.center
+        self.infos_score.move(topleft=(10, 10))
+        self.infos_speed.move(right=self.right - 10, top=10)
+        self.infos_distance.move(right=self.right - 10, bottom=self.road.top - 10)
+        self.infos_time_100.move(left=10, bottom=self.road.top - 10)
+        self.infos_time_opposite.move(left=10, top=self.road.bottom + 10)
+        self.car.move(centery=self.road.centery, left=50)
+        self.env_up.move(centerx=self.centerx, centery=self.centery * 0.5)
+        self.env_down.move(centerx=self.centerx, centery=self.centery * 1.5)
+
+    def update(self):
+        if self.paused:
+            return
+        self.update_player_car()
+        if self.update_clock.elapsed_time(self.update_time):
+            self.update_infos()
+            self.update_background()
+            self.update_traffic()
+
+    def update_player_car(self):
+        if not self.count_down.is_shown():
+            joystick = self.joystick[0]
+            controls = SAVE["controls"]
+            car_handling = (
+                (controls["speed_up"], self.car.speed_up),
+                (controls["brake"], self.car.brake),
+                (controls["up"], self.car.moveUp),
+                (controls["down"], self.car.moveDown),
+            )
+            for control, car_function in car_handling:
+                if self.keyboard.is_pressed(control["key"]):
+                    car_function()
+                elif joystick[control["joy"]]:
+                    car_function(joystick[control["joy"]])
+            if SAVE["auto_acceleration"] is True:
+                self.car.speed_up()
+        self.car.update(self.pixel_per_ms)
+        if self.car.top < self.road[0].bottom + 5:
+            self.car.top = self.road[0].bottom + 5
+        elif self.car.bottom > self.road[-1].top - 5:
+            self.car.bottom = self.road[-1].top - 5
+        if not self.car.is_crashed():
+            self.speed = self.car.speed
+            for car in self.traffic:
+                collision = pygame.sprite.collide_mask(self.car, car)
+                if collision:
+                    self.car.crash(car)
+                    self.crashed_car = car
+                    self.play_sound(AUDIO["crash"])
+                    self.img_crash.show()
+                    self.img_crash.move(centerx=collision[0] + self.car.left, centery=collision[1] + self.car.top)
+                    self.set_object_priority(self.img_crash, self.end_list)
+        elif self.car.right <= 0 and self.crashed_car.right <= 0:
+            self.end_game()
+
+    def car_in_opposite_side(self) -> bool:
+        return bool(self.car.bottom < self.road.centery)
+
+    def update_infos(self):
+        if self.car.speed > 0 and self.car_in_opposite_side():
+            self.infos_time_opposite.show()
+            self.infos_time_opposite.value = self.clock_time_opposite.get_elapsed_time() / 1000
+        else:
+            self.total_time_opposite += self.infos_time_opposite.value
+            self.infos_time_opposite.value = 0
+            self.clock_time_opposite.restart()
+            self.infos_time_opposite.hide()
+        if self.car.speed >= 100:
+            self.infos_time_100.show()
+            self.infos_time_100.value = self.clock_time_100.get_elapsed_time() / 1000
+        else:
+            self.total_time_100 += self.infos_time_100.value
+            self.infos_time_100.value = 0
+            self.clock_time_100.restart()
+            self.infos_time_100.hide()
+        if self.car.speed > 30:
+            score_to_add = 1
+            bonus = [
+                (self.infos_time_100, 150),
+                (self.infos_time_opposite, 120)
+            ]
+            for info, bonus_points in bonus:
+                if info.is_shown():
+                    score_to_add += bonus_points * self.update_time / 1000
+            if score_to_add > 1:
+                self.infos_score.set_color(GREEN_DARK)
+                self.infos_score.shadow_color = YELLOW
+            else:
+                self.infos_score.set_color(YELLOW)
+                self.infos_score.shadow_color = BLACK
+            self.infos_score.value += score_to_add
+        self.infos_speed.value = round(self.car.speed)
+        self.infos_distance.value += self.car.speed * self.pixel_per_ms / 1000
+
+    def update_background(self):
+        offset = self.speed * self.pixel_per_ms
+        for white_bands_list in self.white_bands:
+            for band in white_bands_list:
+                band.move_ip(-offset, 0)
+            band = white_bands_list[0]
+            if band.right <= 0:
+                white_bands_list.remove_object(band, update_pos=False)
+            band = white_bands_list[-1]
+            if band.right < self.right:
+                white_bands_list.add_object(RectangleShape(*band.size, WHITE), update_pos=False)
+        for env in (self.env_up, self.env_down):
+            for img in env:
+                img.move_ip(-offset, 0)
+            img = env[0]
+            if img.right <= 0:
+                env.remove_object(img, update_pos=False)
+                env.add_object(img, update_pos=False)
+        if self.img_crash.is_shown():
+            self.img_crash.move_ip(-offset, 0)
+
+    def update_traffic(self):
+        ways = [list() for _ in range(4)]
+        for car in self.traffic.copy():
+            car.update(self.speed, self.pixel_per_ms)
+            if car.right < 0:
+                self.remove_car_from_traffic(car)
+            else:
+                ways[car.way].append(car)
+        for way, car_list in enumerate(ways, 1):
+            for i in range(1, len(car_list)):
+                car_1 = car_list[i - 1]
+                car_2 = car_list[i]
+                if car_2.left - car_1.right < 20:
+                    if (way in [1, 2]) and (car_1.speed < car_2.speed):
+                        car_2.speed = car_1.speed
+                    elif (way in [3, 4]) and (car_1.speed > car_2.speed):
+                        car_1.speed = car_2.speed
+        ratio = (-(self.car.speed / 250) + 2.12) * 1000
+        if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio) and (len(self.traffic) == 0 or self.traffic[-1].right < self.right - 20):
+            self.add_car_to_traffic()
+
+    def add_car_to_traffic(self):
+        ways = list(range(4))
+        score = round(self.infos_score.value)
+        nb_cars_to_add = 1
+        for threshold in [5000, 12500]:
+            if score >= threshold:
+                nb_cars_to_add += 1
+        for _ in range(nb_cars_to_add):
+            car = TrafficCar(random.randint(1, 4), random.choice(ways))
+            self.traffic.append(car)
+            self.add(car)
+            centery = (self.road[car.way].bottom + self.road[car.way + 1].top) / 2
+            car.move(left=self.right, centery=centery)
+            car.start_animation(loop=True)
+            ways.remove(car.way)
+
+    def remove_car_from_traffic(self, car: TrafficCar):
+        if car in self.traffic:
+            self.traffic.remove(car)
+            self.remove(car)
+
+    def end_game(self):
+        for car in self.traffic:
+            car.stop_animation(reset=False)
+        score = round(self.infos_score.value)
+        distance = round(self.infos_distance.value, 1)
+        time_100 = round(self.total_time_100, 1)
+        time_opposite = round(self.total_time_opposite, 1)
+        window = EndGame(self, score, distance, time_100, time_opposite)
+        window.mainloop()
+
+    def restart_game(self):
+        self.init_game()
+        self.car.restart()
+        for car in self.traffic.copy():
+            self.remove_car_from_traffic(car)
+        self.place_objects()

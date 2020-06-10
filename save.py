@@ -3,7 +3,6 @@
 import sys
 import os
 import pickle
-import pygame
 
 class Save:
     def __init__(self):
@@ -15,13 +14,13 @@ class Save:
             self.__save = dict()
             self.set_default_options()
             self.reset()
-    
+
     def __getitem__(self, key: str):
         return self.__save[key]
-    
+
     def __setitem__(self, key: str, value):
         self.__save[key] = value
-    
+
     def dump(self):
         with open(self.__save_file, "wb") as save:
             pickle.dump(self.__save, save)

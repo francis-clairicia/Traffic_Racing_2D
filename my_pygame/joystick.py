@@ -27,6 +27,7 @@ class Joystick:
             self.set_default_layout()
         self.__nb_update = 0
         self.__nb_update_to_uninitialize = 60
+        self.__button_axis_return_bool = True
 
     """-----------------------------------------------------"""
 
@@ -156,7 +157,9 @@ class Joystick:
             if event == "hat" and isinstance(state, tuple):
                 return 1 if all(active_state[i] == 0 or state[i] == active_state[i] for i in range(2)) else 0
             if event == "axis":
-                return 1 if state >= 0.9 else 0
+                if self.__button_axis_return_bool:
+                    return 1 if state >= 0.9 else 0
+                return state
             return 0
         return state
 
@@ -171,6 +174,9 @@ class Joystick:
             for i in range(len(event_map[event])):
                 self.__event_type[key][i] = event_map[event][i]
             self.__save_to_file()
+
+    def set_button_axis(self, state: bool) -> None:
+        self.__button_axis_return_bool = bool(state)
 
     """------------------------------------------------------------------"""
 
