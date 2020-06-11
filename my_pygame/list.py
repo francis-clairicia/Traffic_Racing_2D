@@ -8,6 +8,7 @@ from .classes import Button
 class DrawableList(Drawable):
     def __init__(self, bg_color=(0, 0, 0, 0), offset=0):
         self.__objects = list()
+        self.__nb_objects = 0
         self.update_pos = True
         self.offset = offset
         self.__bg_color = bg_color
@@ -17,7 +18,7 @@ class DrawableList(Drawable):
         return self.__objects[index]
 
     def __len__(self):
-        return len(self.__objects)
+        return self.__nb_objects
 
     def __iter__(self):
         return iter(self.__objects)
@@ -43,24 +44,38 @@ class DrawableList(Drawable):
     def objects(self):
         return tuple(self.__objects)
 
-    def add_object(self, *objects: Sequence[Drawable], update_pos=True):
+    def add_object(self, *objects: Sequence[Drawable], update_image=True, update_pos=True):
         for obj in objects:
             if issubclass(type(obj), Drawable) and obj not in self.__objects:
                 self.__objects.append(obj)
+                self.__nb_objects += 1
                 setattr(self, "drawable_{}".format(id(obj)), obj)
                 if not update_pos:
                     if len(self.__objects) == 1:
                         obj.center = self.center
                     else:
                         self.update_object_pos(obj, self.__objects[-2])
-        self.update_image(update_pos)
+        if update_image:
+            self.update_image(update_pos)
+        elif update_pos:
+            self.set_object_pos()
 
-    def remove_object(self, *objects: Sequence[Drawable], update_pos=True):
+    def remove_object(self, *objects: Sequence[Drawable], update_image=True, update_pos=True):
         for obj in objects:
             if obj in self.__objects:
                 self.__objects.remove(obj)
+                self.__nb_objects -= 1
                 delattr(self, "drawable_{}".format(id(obj)))
-        self.update_image(update_pos)
+        if update_image:
+            self.update_image(update_pos)
+        elif update_pos:
+            self.set_object_pos()
+
+    def remove_object_from_index(self, index: int, update_image=True, update_pos=True):
+        if index in range(len(self.__objects)):
+            obj = self.__objects[index]
+            delattr(self, "drawable_{}".format(id(obj)))
+            del self.__objects[index]
 
     def update_image(self, update_pos: bool):
         self.update_pos = update_pos
@@ -129,15 +144,21 @@ class DrawableListHorizontal(DrawableList):
 
 class ButtonListVertical(DrawableListVertical):
 
-    def add_object(self, *buttons: Sequence[Button], update_pos=True):
+    def add_object(self, *buttons: Sequence[Button], update_image=True, update_pos=True):
         DrawableListVertical.add_object(self, *buttons, update_pos=update_pos)
         self.__handle_buttons()
-        self.update_image(update_pos)
+        if update_image:
+            self.update_image(update_pos)
+        elif update_pos:
+            self.set_object_pos()
 
-    def remove_object(self, *buttons: Sequence[Button], update_pos=True):
+    def remove_object(self, *buttons: Sequence[Button], update_image=True, update_pos=True):
         DrawableListVertical.remove_object(self, *buttons, update_pos=update_pos)
         self.__handle_buttons()
-        self.update_image(update_pos)
+        if update_image:
+            self.update_image(update_pos)
+        elif update_pos:
+            self.set_object_pos()
 
     def __handle_buttons(self):
         if len(self.objects) > 0:

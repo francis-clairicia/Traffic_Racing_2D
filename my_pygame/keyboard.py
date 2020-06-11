@@ -3,7 +3,7 @@
 from typing import Union
 import pygame
 
-class Keyboard:
+class Keyboard(object):
 
     def __init__(self):
         self.__states = list()

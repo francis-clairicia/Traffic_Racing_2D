@@ -3,12 +3,13 @@
 import random
 from typing import Dict, Union
 import pygame
-from my_pygame import Window, RectangleShape, Text, Image, Button
+from my_pygame import Window, Drawable, RectangleShape, Text, Image, Button
 from my_pygame import DrawableListHorizontal, DrawableListVertical
 from my_pygame import ButtonListHorizontal, ButtonListVertical
 from my_pygame import Sprite, CountDown, Clock
 from my_pygame import GRAY, WHITE, BLACK, YELLOW, GREEN, GREEN_LIGHT, GREEN_DARK
 from constants import IMG, AUDIO, FONT, CAR_INFOS
+from my_pygame import load_image, load_image_list
 from save import SAVE
 from .options import Options
 
@@ -53,7 +54,7 @@ class Car(Sprite):
 
 class PlayerCar(Car):
     def __init__(self, car_id: int):
-        Car.__init__(self, *IMG["gameplay_cars"][car_id])
+        Car.__init__(self, *load_image_list(IMG["gameplay_cars"][car_id], height=55))
 
         self.__speed_up = False
         self.__speed_up_offset = 0
@@ -133,9 +134,9 @@ class PlayerCar(Car):
             self.__move_offset = offset
 
 class TrafficCar(Car):
-    def __init__(self, car_id: int, way: int):
+    def __init__(self, sprites_traffic_cars: dict, car_id: int, way: int):
         side = "opposé" if way in [0, 1] else "normal"
-        Car.__init__(self, *IMG["traffic"][side][car_id])
+        Car.__init__(self, *sprites_traffic_cars[side][car_id])
         self.way = way
         self.side = 1 if side == "normal" else -1
         self.speed = (35, 40, 50, 60)[car_id - 1]
@@ -324,13 +325,13 @@ class Gameplay(Window):
                 self.white_bands.append(white_bands)
 
         # Environment
+        self.env_img = load_image(env["img"], height=110)
         self.env_up = DrawableListHorizontal(offset=400)
         self.env_down = DrawableListHorizontal(offset=400)
-        self.env_limits = [(0, 0), (0, 0)]
         while self.env_up.width < self.width:
-            self.env_up.add_object(Image(env["img"], height=110))
+            self.env_up.add_object(Drawable(self.env_img))
         while self.env_down.width < self.width:
-            self.env_down.add_object(Image(env["img"], height=110))
+            self.env_down.add_object(Drawable(self.env_img))
 
         #Infos
         params_for_infos = {
@@ -351,6 +352,11 @@ class Gameplay(Window):
         self.car = PlayerCar(car_id)
         self.speed = 0
         self.traffic = list()
+        self.sprites_traffic_cars = dict()
+        for side, car_list in IMG["traffic"].items():
+            self.sprites_traffic_cars[side] = dict()
+            for car_id, img_list in car_list.items():
+                self.sprites_traffic_cars[side][car_id] = load_image_list(img_list, height=55)
         self.clock_traffic = Clock()
         self.img_crash = Image(IMG["crash"], size=150)
         self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow_x=5, shadow_y=5)
@@ -486,8 +492,11 @@ class Gameplay(Window):
                 self.infos_score.set_color(YELLOW)
                 self.infos_score.shadow_color = BLACK
             self.infos_score.value += score_to_add
+        else:
+            self.infos_score.set_color(YELLOW)
+            self.infos_score.shadow_color = BLACK
         self.infos_speed.value = round(self.car.speed)
-        self.infos_distance.value += self.car.speed * self.pixel_per_ms / 1000
+        self.infos_distance.value += self.car.speed * self.pixel_per_ms / (1000 * 3.6)
 
     def update_background(self):
         offset = self.speed * self.pixel_per_ms
@@ -496,17 +505,17 @@ class Gameplay(Window):
                 band.move_ip(-offset, 0)
             band = white_bands_list[0]
             if band.right <= 0:
-                white_bands_list.remove_object(band, update_pos=False)
+                white_bands_list.remove_object(band, update_image=False, update_pos=False)
             band = white_bands_list[-1]
             if band.right < self.right:
-                white_bands_list.add_object(RectangleShape(*band.size, WHITE), update_pos=False)
+                white_bands_list.add_object(RectangleShape(*band.size, WHITE), update_image=False, update_pos=False)
         for env in (self.env_up, self.env_down):
             for img in env:
                 img.move_ip(-offset, 0)
             img = env[0]
             if img.right <= 0:
-                env.remove_object(img, update_pos=False)
-                env.add_object(img, update_pos=False)
+                env.remove_object(img, update_image=False, update_pos=False)
+                env.add_object(img, update_image=False, update_pos=False)
         if self.img_crash.is_shown():
             self.img_crash.move_ip(-offset, 0)
 
@@ -539,7 +548,7 @@ class Gameplay(Window):
             if score >= threshold:
                 nb_cars_to_add += 1
         for _ in range(nb_cars_to_add):
-            car = TrafficCar(random.randint(1, 4), random.choice(ways))
+            car = TrafficCar(self.sprites_traffic_cars, random.randint(1, 4), random.choice(ways))
             self.traffic.append(car)
             self.add(car)
             centery = (self.road[car.way].bottom + self.road[car.way + 1].top) / 2

@@ -6,7 +6,7 @@ from typing import Tuple, Union, Optional
 import pickle
 import pygame
 
-class Joystick:
+class Joystick(object):
     def __init__(self, index: int):
         self.id = index
         self.name = str()

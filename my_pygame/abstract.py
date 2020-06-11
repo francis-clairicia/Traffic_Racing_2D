@@ -168,7 +168,7 @@ class Drawable(Sprite):
     midleft = property(lambda self: self.rect.midleft, lambda self, value: self.move(midleft=value))
     midright = property(lambda self: self.rect.midright, lambda self, value: self.move(midright=value))
 
-class Focusable:
+class Focusable(object):
 
     MODE_MOUSE = "mouse"
     MODE_KEY = "keyboard"

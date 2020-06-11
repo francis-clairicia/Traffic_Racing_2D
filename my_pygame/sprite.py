@@ -2,12 +2,12 @@
 
 from typing import Sequence
 import pygame
-from .classes import Drawable, Image
+from .classes import Drawable
 from .clock import Clock
 
 class Sprite(Drawable):
-    def __init__(self, *img_list: Sequence[str], **kwargs):
-        self.__sprites = tuple(Image(file, **kwargs).image for file in img_list)
+    def __init__(self, *img_list: Sequence[pygame.Surface], **kwargs):
+        self.__sprites = img_list
         Drawable.__init__(self, self.__sprites[0], **kwargs)
         self.__sprite_idx = 0
         self.__clock = Clock()

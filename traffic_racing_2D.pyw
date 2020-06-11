@@ -43,7 +43,7 @@ class Credits(Window):
 
 class TrafficRacing(Window):
     def __init__(self):
-        Window.__init__(self, flags=pygame.NOFRAME, bg_music=AUDIO["menu"])
+        Window.__init__(self, flags=pygame.NOFRAME|pygame.DOUBLEBUF, bg_music=AUDIO["menu"])
         self.set_title("Traffic Racing 2D")
         self.set_icon(ICON)
         self.set_joystick(1)

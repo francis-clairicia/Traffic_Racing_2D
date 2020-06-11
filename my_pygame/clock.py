@@ -2,7 +2,7 @@
 
 import pygame
 
-class Clock:
+class Clock(object):
     def __init__(self):
         self.__time = 0
         self.__clock = pygame.time.Clock()

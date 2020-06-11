@@ -12,7 +12,7 @@ from .clock import Clock
 
 CONFIG_FILE = os.path.join(sys.path[0], "settings.conf")
 
-class WindowCallback:
+class WindowCallback(object):
     def __init__(self, callback: Callable[..., Any], wait_time: float):
         self.wait_time = wait_time
         self.callback = callback
@@ -24,7 +24,7 @@ class WindowCallback:
     def __call__(self):
         return self.callback()
 
-class Window:
+class Window(object):
 
     __all_opened = list()
     __sound_volume = 0.5

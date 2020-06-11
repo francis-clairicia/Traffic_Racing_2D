@@ -21,7 +21,7 @@ MAGENTA = (255, 0, 255)
 PURPLE = (165, 0, 255)
 TRANSPARENT = (0, 0, 0, 0)
 
-class Color:
+class Color(object):
     def __init__(self, red, green, blue, alpha=255):
         self.__red = 0
         self.__green = 0

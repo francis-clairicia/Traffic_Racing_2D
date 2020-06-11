@@ -5,22 +5,12 @@ import pygame
 from pygame.event import Event
 from pygame.font import Font, SysFont
 from .abstract import Drawable, Clickable
+from .image import load_image
 
 class Image(Drawable):
     def __init__(self, filepath: str, size=None, width=None, height=None, **kwargs):
-        Drawable.__init__(self, pygame.image.load(filepath).convert_alpha(), **kwargs)
+        Drawable.__init__(self, load_image(filepath, size, width, height), **kwargs)
         self.__filepath = filepath
-        if size is not None:
-            self.set_size(size)
-        elif width is not None and height is not None:
-            if self.width > width:
-                self.set_width(width)
-            if self.height > height:
-                self.set_height(height)
-        elif width is not None:
-            self.set_width(width)
-        elif height is not None:
-            self.set_height(height)
 
     @property
     def filepath(self):
@@ -53,14 +43,15 @@ class Text(Drawable):
         Drawable.__init__(self, **kwargs)
         if font is None:
             font = SysFont(pygame.font.get_default_font(), 15)
+        self.shadow = (shadow_x, shadow_y)
+        self.shadow_color = shadow_color
+        self.__shadow_surface = None
         self.color = color
         self.justify = justify
         self.font = font
         self.string = text
         self.img = img
         self.compound = compound
-        self.shadow = (shadow_x, shadow_y)
-        self.shadow_color = shadow_color
 
     @property
     def font(self) -> Font:
@@ -116,10 +107,9 @@ class Text(Drawable):
         self.string = string
 
     def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown() and any(value != 0 for value in self.shadow[0:2]):
-            shadow = Text(self.string, self.font, self.shadow_color, center=self.center, justify=self.justify)
-            shadow.move_ip(*self.shadow)
-            shadow.draw(surface)
+        if self.is_shown() and self.__shadow_surface is not None:
+            self.__shadow_surface.move(x=self.x + self.shadow[0], y=self.y + self.shadow[1])
+            self.__shadow_surface.draw(surface)
         Drawable.draw(self, surface)
 
     def refresh(self) -> None:
@@ -182,6 +172,10 @@ class Text(Drawable):
             self.img.draw(self.image)
         else:
             self.image = text
+        if any(value != 0 for value in self.shadow[0:2]):
+            self.__shadow_surface = Text(self.string, self.font, self.shadow_color, center=self.center, justify=self.justify)
+        else:
+            self.__shadow_surface = None
 
     def set_color(self, color: tuple) -> None:
         self.color = tuple(color)
