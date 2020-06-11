@@ -352,6 +352,7 @@ class Gameplay(Window):
         self.car = PlayerCar(car_id)
         self.speed = 0
         self.traffic = list()
+        self.unused_cars = list()
         self.sprites_traffic_cars = dict()
         for side, car_list in IMG["traffic"].items():
             self.sprites_traffic_cars[side] = dict()
@@ -375,7 +376,8 @@ class Gameplay(Window):
 
     def pause(self):
         self.paused = True
-        for car in self.traffic + [self.car]:
+        self.car.stop_animation(reset=False)
+        for car in self.traffic:
             car.stop_animation(reset=False)
         pause = Pause(self)
         pause.mainloop()
@@ -385,8 +387,13 @@ class Gameplay(Window):
 
     def return_to_game(self):
         self.paused = False
-        for car in self.traffic + [self.car]:
+        self.car.start_animation(loop=True)
+        for car in self.traffic:
             car.start_animation(loop=True)
+        self.clock_traffic.tick()
+        self.clock_time_100.tick()
+        self.clock_time_opposite.tick()
+        self.update_clock.tick()
 
     def init_game(self):
         self.go_to_garage = False
@@ -460,7 +467,7 @@ class Gameplay(Window):
         return bool(self.car.bottom < self.road.centery)
 
     def update_infos(self):
-        if self.car.speed > 0 and self.car_in_opposite_side():
+        if self.car.speed > 30 and self.car_in_opposite_side():
             self.infos_time_opposite.show()
             self.infos_time_opposite.value = self.clock_time_opposite.get_elapsed_time() / 1000
         else:
@@ -506,6 +513,7 @@ class Gameplay(Window):
             band = white_bands_list[0]
             if band.right <= 0:
                 white_bands_list.remove_object(band, update_image=False, update_pos=False)
+                del band
             band = white_bands_list[-1]
             if band.right < self.right:
                 white_bands_list.add_object(RectangleShape(*band.size, WHITE), update_image=False, update_pos=False)
@@ -521,10 +529,10 @@ class Gameplay(Window):
 
     def update_traffic(self):
         ways = [list() for _ in range(4)]
-        for car in self.traffic.copy():
+        for car in self.traffic:
             car.update(self.speed, self.pixel_per_ms)
             if car.right < 0:
-                self.remove_car_from_traffic(car)
+                self.unused_cars.append(car)
             else:
                 ways[car.way].append(car)
         for way, car_list in enumerate(ways, 1):
@@ -536,6 +544,7 @@ class Gameplay(Window):
                         car_2.speed = car_1.speed
                     elif (way in [3, 4]) and (car_1.speed > car_2.speed):
                         car_1.speed = car_2.speed
+        self.delete_unused_cars()
         ratio = (-(self.car.speed / 250) + 2.12) * 1000
         if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio) and (len(self.traffic) == 0 or self.traffic[-1].right < self.right - 20):
             self.add_car_to_traffic()
@@ -557,9 +566,14 @@ class Gameplay(Window):
             ways.remove(car.way)
 
     def remove_car_from_traffic(self, car: TrafficCar):
-        if car in self.traffic:
-            self.traffic.remove(car)
-            self.remove(car)
+        self.traffic.remove(car)
+        self.remove(car)
+
+    def delete_unused_cars(self):
+        for car in self.unused_cars:
+            self.remove_car_from_traffic(car)
+        del self.unused_cars
+        self.unused_cars = list()
 
     def end_game(self):
         for car in self.traffic:
@@ -570,10 +584,13 @@ class Gameplay(Window):
         time_opposite = round(self.total_time_opposite, 1)
         window = EndGame(self, score, distance, time_100, time_opposite)
         window.mainloop()
+        self.delete_unused_cars()
+        for car in self.traffic:
+            self.remove_car_from_traffic(car)
+        del self.traffic
+        self.traffic = list()
 
     def restart_game(self):
         self.init_game()
         self.car.restart()
-        for car in self.traffic.copy():
-            self.remove_car_from_traffic(car)
         self.place_objects()

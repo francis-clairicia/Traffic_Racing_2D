@@ -47,7 +47,6 @@ class TrafficRacing(Window):
         self.set_title("Traffic Racing 2D")
         self.set_icon(ICON)
         self.set_joystick(1)
-        self.set_fps(120)
         self.joystick[0].set_button_axis(False)
         self.bind_key(pygame.K_ESCAPE, lambda key: self.stop())
         self.bg = Image(IMG["background"], width=self.width)
