@@ -467,9 +467,14 @@ class Gameplay(Window):
         return bool(self.car.bottom < self.road.centery)
 
     def update_infos(self):
+        min_speed = 30
+        score_to_add = (self.car.speed - min_speed) / 5
+        bonus = False
         if self.car.speed > 30 and self.car_in_opposite_side():
             self.infos_time_opposite.show()
             self.infos_time_opposite.value = self.clock_time_opposite.get_elapsed_time() / 1000
+            score_to_add += 120
+            bonus = True
         else:
             self.total_time_opposite += self.infos_time_opposite.value
             self.infos_time_opposite.value = 0
@@ -478,30 +483,20 @@ class Gameplay(Window):
         if self.car.speed >= 100:
             self.infos_time_100.show()
             self.infos_time_100.value = self.clock_time_100.get_elapsed_time() / 1000
+            score_to_add += 150
+            bonus = True
         else:
             self.total_time_100 += self.infos_time_100.value
             self.infos_time_100.value = 0
             self.clock_time_100.restart()
             self.infos_time_100.hide()
-        if self.car.speed > 30:
-            score_to_add = 1
-            bonus = [
-                (self.infos_time_100, 150),
-                (self.infos_time_opposite, 120)
-            ]
-            for info, bonus_points in bonus:
-                if info.is_shown():
-                    score_to_add += bonus_points * self.update_time / 1000
-            if score_to_add > 1:
-                self.infos_score.set_color(GREEN_DARK)
-                self.infos_score.shadow_color = YELLOW
-            else:
-                self.infos_score.set_color(YELLOW)
-                self.infos_score.shadow_color = BLACK
-            self.infos_score.value += score_to_add
+        if bonus:
+            self.infos_score.set_color(GREEN_DARK)
+            self.infos_score.shadow_color = YELLOW
         else:
             self.infos_score.set_color(YELLOW)
             self.infos_score.shadow_color = BLACK
+        self.infos_score.value += score_to_add * self.update_time / 1000
         self.infos_speed.value = round(self.car.speed)
         self.infos_distance.value += self.car.speed * self.pixel_per_ms / (1000 * 3.6)
 
