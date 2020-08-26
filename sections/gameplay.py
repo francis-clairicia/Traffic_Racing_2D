@@ -152,6 +152,7 @@ class Info(Text):
         self.__title = title
         self.__extension = extension
         self.__round_n = round_n
+        self.__clock = Clock()
         self.value = 0
 
     @property
@@ -163,10 +164,11 @@ class Info(Text):
         if not isinstance(value, (int, float)):
             raise TypeError("value must be an integer or a float")
         self.__value = value
-        msg = self.__title + "\n" + str(round(value, self.__round_n) if self.__round_n > 0 else round(value))
-        if len(self.__extension) > 0:
-            msg += " " + self.__extension
-        self.string = msg
+        if self.__clock.elapsed_time(200):
+            msg = self.__title + "\n" + str(round(value, self.__round_n) if self.__round_n > 0 else round(value))
+            if len(self.__extension) > 0:
+                msg += " " + self.__extension
+            self.txt = msg
 
 class Pause(Window):
     def __init__(self, master):
@@ -288,7 +290,8 @@ class EndGame(Window):
         self.menu_buttons.move(centerx=self.centerx, bottom=self.bottom - 50)
 
     def restart_game(self):
-        self.master.restart_game()
+        self.master.restart = True
+        self.master.stop()
         self.stop()
 
     def return_to_garage(self):
@@ -342,7 +345,7 @@ class Gameplay(Window):
         }
         self.infos_score = Info("Score", round_n=0, **params_for_infos)
         self.infos_speed = Info("Speed", extension="km/h", **params_for_infos, justify="right")
-        self.infos_distance = Info("Distance", extension="km", **params_for_infos, justify="right")
+        self.infos_distance = Info("Distance", round_n=2, extension="km", **params_for_infos, justify="right")
         self.infos_time_100 = Info("High speed", **params_for_infos)
         self.infos_time_opposite = Info("Opposite side", **params_for_infos)
         self.clock_time_100 = Clock()
@@ -351,8 +354,8 @@ class Gameplay(Window):
 
         self.car = PlayerCar(car_id)
         self.speed = 0
+        self.ways = tuple(list() for _ in range(4))
         self.traffic = list()
-        self.unused_cars = list()
         self.sprites_traffic_cars = dict()
         for side, car_list in IMG["traffic"].items():
             self.sprites_traffic_cars[side] = dict()
@@ -361,6 +364,7 @@ class Gameplay(Window):
         self.clock_traffic = Clock()
         self.img_crash = Image(IMG["crash"], size=150)
         self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow_x=5, shadow_y=5)
+        self.last_car_way = 0
 
         # Default values
         self.update_clock = Clock()
@@ -368,7 +372,7 @@ class Gameplay(Window):
         self.pixel_per_sec = 10 # For 1km/h
         self.pixel_per_ms = self.pixel_per_sec * self.update_time / 1000
         self.paused = False
-        self.go_to_garage = False
+        self.go_to_garage = self.restart = False
         self.crashed_car = None
 
         self.disable_key_joy_focus()
@@ -399,10 +403,10 @@ class Gameplay(Window):
         self.go_to_garage = False
         self.paused = False
         self.crashed_car = None
-        for info in [self.infos_speed, self.infos_score, self.infos_distance, self.infos_time_100, self.infos_time_opposite]:
+        for info in (self.infos_speed, self.infos_score, self.infos_distance, self.infos_time_100, self.infos_time_opposite):
             info.value = 0
-        for info in [self.infos_time_100, self.infos_time_opposite]:
-            info.hide()
+            if info in (self.infos_time_100, self.infos_time_opposite):
+                info.hide()
         self.total_time_100 = self.total_time_opposite = 0
         self.count_down.start()
         self.img_crash.hide()
@@ -491,10 +495,10 @@ class Gameplay(Window):
             self.clock_time_100.restart()
             self.infos_time_100.hide()
         if bonus:
-            self.infos_score.set_color(GREEN_DARK)
+            self.infos_score.color = GREEN_DARK
             self.infos_score.shadow_color = YELLOW
         else:
-            self.infos_score.set_color(YELLOW)
+            self.infos_score.color = YELLOW
             self.infos_score.shadow_color = BLACK
         self.infos_score.value += score_to_add * self.update_time / 1000
         self.infos_speed.value = round(self.car.speed)
@@ -502,16 +506,18 @@ class Gameplay(Window):
 
     def update_background(self):
         offset = self.speed * self.pixel_per_ms
+        obj_to_delete = list()
         for white_bands_list in self.white_bands:
             for band in white_bands_list:
                 band.move_ip(-offset, 0)
             band = white_bands_list[0]
             if band.right <= 0:
                 white_bands_list.remove_object(band, update_image=False, update_pos=False)
-                del band
+                obj_to_delete.append(band)
             band = white_bands_list[-1]
             if band.right < self.right:
                 white_bands_list.add_object(RectangleShape(*band.size, WHITE), update_image=False, update_pos=False)
+        del obj_to_delete
         for env in (self.env_up, self.env_down):
             for img in env:
                 img.move_ip(-offset, 0)
@@ -523,14 +529,11 @@ class Gameplay(Window):
             self.img_crash.move_ip(-offset, 0)
 
     def update_traffic(self):
-        ways = [list() for _ in range(4)]
         for car in self.traffic:
             car.update(self.speed, self.pixel_per_ms)
             if car.right < 0:
-                self.unused_cars.append(car)
-            else:
-                ways[car.way].append(car)
-        for way, car_list in enumerate(ways, 1):
+                self.remove_car_from_traffic(car)
+        for way, car_list in enumerate(self.ways, 1):
             for i in range(1, len(car_list)):
                 car_1 = car_list[i - 1]
                 car_2 = car_list[i]
@@ -539,7 +542,6 @@ class Gameplay(Window):
                         car_2.speed = car_1.speed
                     elif (way in [3, 4]) and (car_1.speed > car_2.speed):
                         car_1.speed = car_2.speed
-        self.delete_unused_cars()
         ratio = (-(self.car.speed / 250) + 2.12) * 1000
         if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio) and (len(self.traffic) == 0 or self.traffic[-1].right < self.right - 20):
             self.add_car_to_traffic()
@@ -548,44 +550,34 @@ class Gameplay(Window):
         ways = list(range(4))
         score = round(self.infos_score.value)
         nb_cars_to_add = 1
-        for threshold in [5000, 12500]:
+        for threshold in (5000, 12500):
             if score >= threshold:
                 nb_cars_to_add += 1
         for _ in range(nb_cars_to_add):
             car = TrafficCar(self.sprites_traffic_cars, random.randint(1, 4), random.choice(ways))
             self.traffic.append(car)
             self.add(car)
+            self.ways[car.way].append(car)
             centery = (self.road[car.way].bottom + self.road[car.way + 1].top) / 2
             car.move(left=self.right, centery=centery)
             car.start_animation(loop=True)
             ways.remove(car.way)
+        del ways
 
     def remove_car_from_traffic(self, car: TrafficCar):
         self.traffic.remove(car)
         self.remove(car)
-
-    def delete_unused_cars(self):
-        for car in self.unused_cars:
-            self.remove_car_from_traffic(car)
-        del self.unused_cars
-        self.unused_cars = list()
+        self.ways[car.way].remove(car)
 
     def end_game(self):
         for car in self.traffic:
             car.stop_animation(reset=False)
+        self.crashed_car = None
         score = round(self.infos_score.value)
         distance = round(self.infos_distance.value, 1)
         time_100 = round(self.total_time_100, 1)
         time_opposite = round(self.total_time_opposite, 1)
         window = EndGame(self, score, distance, time_100, time_opposite)
         window.mainloop()
-        self.delete_unused_cars()
-        for car in self.traffic:
+        for car in tuple(self.traffic):
             self.remove_car_from_traffic(car)
-        del self.traffic
-        self.traffic = list()
-
-    def restart_game(self):
-        self.init_game()
-        self.car.restart()
-        self.place_objects()

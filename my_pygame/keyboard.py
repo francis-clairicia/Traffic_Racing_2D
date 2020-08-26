@@ -5,6 +5,8 @@ import pygame
 
 class Keyboard(object):
 
+    __slots__ = ("__states")
+
     def __init__(self):
         self.__states = list()
 

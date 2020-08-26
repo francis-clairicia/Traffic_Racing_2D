@@ -201,13 +201,20 @@ class EnvironmentChooser(Window):
             button.set_obj_on_side(on_top=self.button_back)
 
     def play(self, env: str):
-        gameplay = Gameplay(self.master.car_viewer.id, ENVIRONMENT[env])
-        gameplay.mainloop()
-        if not gameplay.go_to_garage:
+        play = True
+        go_to_garage = False
+        while play:
+            go_to_garage, play = self.launch_game(env)
+        if not go_to_garage:
             self.master.stop()
         else:
             self.master.car_viewer.focus_set()
         self.stop()
+
+    def launch_game(self, env: str):
+        gameplay = Gameplay(self.master.car_viewer.id, ENVIRONMENT[env])
+        gameplay.mainloop()
+        return gameplay.go_to_garage, gameplay.restart
 
 class Garage(Window):
 
@@ -325,12 +332,12 @@ class Garage(Window):
         if confirm_window.buyed:
             SAVE["money"] -= self.car_viewer["price"]
             SAVE["owned_cars"][self.car_viewer.id] = True
-            self.text_money.string = format_number(SAVE["money"])
+            self.text_money.txt = format_number(SAVE["money"])
             if Clickable.MODE != Clickable.MODE_MOUSE:
                 self.car_viewer.focus_set()
 
     def play(self):
         environment_chooser = EnvironmentChooser(self)
         environment_chooser.mainloop()
-        self.text_money.string = format_number(SAVE["money"])
-        self.text_highscore.string = "Highscore: {}".format(SAVE["highscore"])
+        self.text_money.txt = format_number(SAVE["money"])
+        self.text_highscore.txt = "Highscore: {}".format(SAVE["highscore"])

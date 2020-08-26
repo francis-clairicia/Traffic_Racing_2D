@@ -26,16 +26,16 @@ def load_image(filepath: str, size=None, width=None, height=None) -> pygame.Surf
     filepath = set_constant_file(filepath)
     surface = pygame.image.load(filepath).convert_alpha()
     w, h = surface.get_size()
-    if size is not None:
+    if size:
         surface = set_size(surface, size)
-    elif width is not None and height is not None:
+    elif width  and height:
         if w > width:
             surface = set_width(surface, (w, h), width)
         if h > height:
             surface = set_height(surface, (w, h), height)
-    elif width is not None:
+    elif width:
         surface = set_width(surface, (w, h), width)
-    elif height is not None:
+    elif height:
         surface = set_height(surface, (w, h), height)
     return surface
 

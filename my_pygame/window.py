@@ -150,7 +150,7 @@ class Window(object):
     def set_object_priority(self, obj, new_pos, relative_to=None):
         former_pos = self.objects.index(obj)
         del self.objects[former_pos]
-        if relative_to is not None:
+        if relative_to:
             new_pos += self.objects.index(relative_to)
         self.objects.insert(new_pos, obj)
 
@@ -217,7 +217,7 @@ class Window(object):
     def stop(self, force=False, sound=None):
         self.loop = False
         self.on_quit()
-        if sound is not None:
+        if sound:
             self.play_sound(sound)
         if self.main_window or force is True:
             Window.save_sound_volume()
@@ -238,7 +238,7 @@ class Window(object):
         pass
 
     def draw_screen(self, show_fps=True):
-        if self.bg_color is not None:
+        if self.bg_color:
             self.window.fill(self.bg_color)
         if isinstance(self.__master, Window):
             self.__master.draw_screen(show_fps=False)
@@ -351,9 +351,9 @@ class Window(object):
                             else:
                                 obj = self.focusable_objects[self.focusable_objects_idx].get_obj_on_side(side_dict[value])
                             break
-                    while obj is not None and (not obj.is_shown() or not obj.take_focus()):
+                    while obj and (not obj.is_shown() or not obj.take_focus()):
                         obj = obj.get_obj_on_side(side_dict[value])
-                if obj is not None:
+                if obj:
                     self.set_focus(obj)
         else:
             Focusable.MODE = Focusable.MODE_MOUSE
@@ -407,7 +407,7 @@ class Window(object):
     def check_sound_status(self):
         if not Window.__enable_music or (self.bg_music is None and pygame.mixer.get_busy()):
             self.stop_music()
-        elif Window.__enable_music and self.bg_music is not None and (not pygame.mixer.music.get_busy() or Window.actual_music is None or Window.actual_music != self.bg_music):
+        elif Window.__enable_music and self.bg_music and (not pygame.mixer.music.get_busy() or Window.actual_music is None or Window.actual_music != self.bg_music):
             self.play_music(self.bg_music)
 
     def update_sound_volume(self):

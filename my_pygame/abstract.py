@@ -6,18 +6,30 @@ from pygame.event import Event
 from pygame.sprite import Sprite, Group
 
 class Drawable(Sprite):
+
+    __slots__ = (
+        "__surface",
+        "__rect",
+        "__mask",
+        "__rotate",
+        "__sounds",
+        "__sub_drawables",
+        "__former_movs",
+        "__draw_sprite",
+        "__valid_size",
+    )
+
     def __init__(self, surface: Optional[pygame.Surface] = pygame.Surface((0, 0), flags=pygame.SRCALPHA),
                  rotate: Optional[int] = 0, groups: Optional[Union[List[Group], Tuple[Group, ...]]] = tuple(), **kwargs):
         Sprite.__init__(self, *groups)
+        self.__surface = self.__rect = self.__mask = None
+        self.__rotate = 0
         self.__sounds = list()
         self.__sub_drawables = list()
-        self.former_moves = dict()
-        self.__x = 0
-        self.__y = 0
-        self.image = surface
+        self.__former_moves = dict()
         self.__draw_sprite = True
         self.__valid_size = True
-        self.__rotate = 0
+        self.image = surface
         self.rotate = rotate
         self.move(**kwargs)
 
@@ -49,14 +61,6 @@ class Drawable(Sprite):
     def fill(self, color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]) -> None:
         self.image.fill(color)
 
-    def blit(self, surface, dest) -> pygame.Rect:
-        rect = self.image.blit(surface, dest)
-        return rect
-
-    @property
-    def mask(self):
-        return pygame.mask.from_surface(self.image)
-
     def show(self) -> None:
         self.set_visibility(True)
 
@@ -76,8 +80,17 @@ class Drawable(Sprite):
     @image.setter
     def image(self, surface: pygame.Surface) -> None:
         self.__surface = surface
-        self.rect = self.__surface.get_rect()
-        self.move(**self.former_moves)
+        self.__rect = self.__surface.get_rect()
+        self.move(**self.__former_moves)
+        self.__mask = pygame.mask.from_surface(self.__surface)
+
+    @property
+    def rect(self):
+        return self.__rect
+
+    @property
+    def mask(self):
+        return self.__mask
 
     @property
     def sounds(self) -> Tuple[pygame.mixer.Sound, ...]:
@@ -93,23 +106,19 @@ class Drawable(Sprite):
     def move(self, **kwargs) -> None:
         if len(kwargs) == 0:
             return
-        x = self.rect.x if hasattr(self, "rect") else 0
-        y = self.rect.y if hasattr(self, "rect") else 0
-        common = ["center", "topleft", "topright", "bottomleft", "bottomright", "midtop", "midbottom", "midleft", "midright"]
-        if not any(key in kwargs for key in ["x", "left", "right", "centerx", *common]):
+        x = self.__rect.x if isinstance(self.__rect, pygame.Rect) else 0
+        y = self.__rect.y if isinstance(self.__rect, pygame.Rect) else 0
+        common = ("center", "topleft", "topright", "bottomleft", "bottomright", "midtop", "midbottom", "midleft", "midright")
+        if not any(key in kwargs for key in ("x", "left", "right", "centerx", *common)):
             kwargs["x"] = x
-        if not any(key in kwargs for key in ["y", "top", "bottom", "centery", *common]):
+        if not any(key in kwargs for key in ("y", "top", "bottom", "centery", *common)):
             kwargs["y"] = y
-        self.rect = self.image.get_rect(**kwargs)
-        self.former_moves = kwargs.copy()
-        self.__x = self.rect.x
-        self.__y = self.rect.y
+        self.__rect = self.image.get_rect(**kwargs)
+        self.__former_moves = kwargs.copy()
 
     def move_ip(self, x: float, y: float) -> None:
-        self.__x += x
-        self.__y += y
-        self.rect = self.image.get_rect(x=self.__x, y=self.__y)
-        self.former_moves = {"x": self.rect.x, "y": self.rect.y}
+        self.__rect = self.image.get_rect(x=self.__rect.x + x, y=self.__rect.y + y)
+        self.__former_moves = {"x": self.__rect.x, "y": self.__rect.y}
 
     @property
     def rotate(self):
@@ -138,11 +147,11 @@ class Drawable(Sprite):
             self.__valid_size = False
 
     def set_width(self, width: float, smooth=True)-> None:
-        height = 0 if width == 0 else round(self.rect.h * width / self.rect.w)
+        height = 0 if width == 0 else round(self.__rect.h * width / self.__rect.w)
         self.set_size(width, height, smooth=smooth)
 
     def set_height(self, height: float, smooth=True) -> None:
-        width = 0 if height == 0 else round(self.rect.w * height / self.rect.h)
+        width = 0 if height == 0 else round(self.__rect.w * height / self.__rect.h)
         self.set_size(width, height, smooth=smooth)
 
     left = property(lambda self: self.rect.left, lambda self, value: self.move(left=value))
@@ -168,7 +177,7 @@ class Drawable(Sprite):
     midleft = property(lambda self: self.rect.midleft, lambda self, value: self.move(midleft=value))
     midright = property(lambda self: self.rect.midright, lambda self, value: self.move(midright=value))
 
-class Focusable(object):
+class Focusable:
 
     MODE_MOUSE = "mouse"
     MODE_KEY = "keyboard"
@@ -182,14 +191,11 @@ class Focusable(object):
     def __init__(self, master, highlight_color=(0, 0, 255), highlight_thickness=2):
         self.__focus = False
         self.__master = master
-        self.highlight_color = highlight_color
-        self.highlight_thickness = highlight_thickness
-        self.default_outline = None
-        self.default_outline_color = None
-        self.highlight = False
-        self.__side = {key: None for key in (Focusable.ON_LEFT, Focusable.ON_RIGHT, Focusable.ON_TOP, Focusable.ON_BOTTOM)}
+        self.__side = dict.fromkeys((Focusable.ON_LEFT, Focusable.ON_RIGHT, Focusable.ON_TOP, Focusable.ON_BOTTOM))
         self.__take_focus = True
         master.focus_add(self)
+        self.highlight_color = highlight_color
+        self.highlight_thickness = highlight_thickness
 
     def get_obj_on_side(self, side: str):
         return self.__side.get(side, None)
@@ -218,7 +224,7 @@ class Focusable(object):
         return self.__focus
 
     def take_focus(self, status=None) -> bool:
-        if status is not None:
+        if status:
             self.__take_focus = bool(status)
         return self.__take_focus
 
@@ -257,7 +263,7 @@ class Clickable(Focusable):
     def __init__(self, master, callback: Optional[Callable[..., Any]] = None,
                  state="normal", hover_sound=None, on_click_sound=None, disabled_sound=None, **kwargs):
         Focusable.__init__(self, master, **kwargs)
-        self.command = callback
+        self.__callback = None
         self.__hover = False
         self.__active = False
         self.__hover_sound = None if hover_sound is None else pygame.mixer.Sound(hover_sound)
@@ -266,6 +272,7 @@ class Clickable(Focusable):
         self.__enable_mouse = True
         self.__enable_key = True
         self.__state = Clickable.NORMAL
+        self.callback = callback
         self.state = state
         master.bind_event(pygame.KEYDOWN, self.event_click_down)
         master.bind_event(pygame.KEYUP, self.event_click_up)
@@ -276,13 +283,13 @@ class Clickable(Focusable):
         master.bind_mouse(self.mouse_motion)
 
     @property
-    def command(self):
+    def callback(self):
         return self.__callback
 
-    @command.setter
-    def command(self, command: Callable[..., Any]):
-        if callable(command):
-            self.__callback = command
+    @callback.setter
+    def callback(self, callback: Callable[..., Any]):
+        if callable(callback):
+            self.__callback = callback
         else:
             self.__callback = None
 
@@ -376,7 +383,7 @@ class Clickable(Focusable):
         if self.valid_click(event, down=False):
             self.play_on_click_sound()
             self.on_hover()
-            if self.__callback is not None and self.state != Clickable.DISABLED:
+            if self.__callback  and self.state != Clickable.DISABLED:
                 self.__callback()
 
     def event_click_down(self, event: Event) -> None:

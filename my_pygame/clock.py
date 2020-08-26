@@ -3,6 +3,9 @@
 import pygame
 
 class Clock(object):
+
+    __slots__ = ("__time", "__clock")
+
     def __init__(self):
         self.__time = 0
         self.__clock = pygame.time.Clock()

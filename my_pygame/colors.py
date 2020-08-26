@@ -22,6 +22,17 @@ PURPLE = (165, 0, 255)
 TRANSPARENT = (0, 0, 0, 0)
 
 class Color(object):
+
+    __slots__ = (
+        "__red",
+        "__green",
+        "__blue",
+        "__alpha",
+        "__hue",
+        "__saturation",
+        "__value"
+    )
+
     def __init__(self, red, green, blue, alpha=255):
         self.__red = 0
         self.__green = 0

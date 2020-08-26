@@ -7,9 +7,25 @@ import pickle
 import pygame
 
 class Joystick(object):
+
+    __slots__ = (
+        "__index",
+        "__name",
+        "__button_list",
+        "__axis_list",
+        "__dpad_list",
+        "__event_type",
+        "__event_state",
+        "__save_file",
+        "__save",
+        "__nb_update",
+        "__nb_update_to_uninitialize",
+        "__button_axis_return_bool"
+    )
+
     def __init__(self, index: int):
         self.id = index
-        self.name = str()
+        self.__name = str()
 
         self.__button_list = ["A", "B", "X", "Y", "L1", "L2", "R1", "R2", "SELECT", "START", "HOME", "L3", "R3"]
         self.__axis_list = ["AXIS_LEFT_X", "AXIS_LEFT_Y", "AXIS_RIGHT_X", "AXIS_RIGHT_Y"]
@@ -32,16 +48,16 @@ class Joystick(object):
     """-----------------------------------------------------"""
 
     def connected(self) -> bool:
-        return bool(len(self.name))
+        return bool(len(self.__name))
 
     def update(self) -> None:
         joystick = None
         try:
             joystick = pygame.joystick.Joystick(self.id)
             joystick.init()
-            self.name = joystick.get_name()
-            if self.name in self.__save:
-                self.__event_type = self.__save[self.name]
+            self.__name = joystick.get_name()
+            if self.__name in self.__save:
+                self.__event_type = self.__save[self.__name]
             else:
                 self.set_default_layout()
                 self.__save_to_file()
@@ -54,7 +70,7 @@ class Joystick(object):
                 for i in range(get_max_number()):
                     self.__event_state[event][i] = get_value(i)
         except pygame.error:
-            self.name = str()
+            self.__name = str()
             self.__nb_update = self.__nb_update_to_uninitialize
             for key in self.__event_state:
                 self.__event_state[key].clear()
@@ -103,7 +119,7 @@ class Joystick(object):
                 self.__event_type[key][i] = layout[key][i]
 
     def __save_to_file(self):
-        self.__save[self.name] = dict(self.__event_type)
+        self.__save[self.__name] = dict(self.__event_type)
         with open(self.__save_file, "wb") as save:
             pickle.dump(self.__save, save)
 
@@ -189,6 +205,10 @@ class Joystick(object):
         if not isinstance(v, int):
             raise TypeError("index value must be an int")
         self.__index = v
+
+    @property
+    def name(self):
+        return self.__name
 
     """------------------------------------------------------------------"""
 

@@ -43,9 +43,10 @@ class Credits(Window):
 
 class TrafficRacing(Window):
     def __init__(self):
-        Window.__init__(self, flags=pygame.NOFRAME|pygame.DOUBLEBUF, bg_music=AUDIO["menu"])
+        Window.__init__(self, flags=pygame.DOUBLEBUF|pygame.FULLSCREEN, bg_music=AUDIO["menu"])
         self.set_title("Traffic Racing 2D")
         self.set_icon(ICON)
+        self.set_fps(120)
         self.set_joystick(1)
         self.joystick[0].set_button_axis(False)
         self.bind_key(pygame.K_ESCAPE, lambda key: self.stop())
@@ -83,7 +84,7 @@ class TrafficRacing(Window):
             button.set_obj_on_side(on_left=self.button_credits)
         button_quit = self.menu_buttons[-1]
         button_quit.set_obj_on_side(on_bottom=self.button_credits)
-        self.button_credits.set_obj_on_side(on_top=button_quit)
+        self.button_credits.set_obj_on_side(on_top=button_quit, on_right=self.menu_buttons[0])
 
     def show_options(self):
         self.hide_all(without=[self.bg])

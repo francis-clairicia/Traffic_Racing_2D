@@ -6,6 +6,16 @@ from .classes import Drawable
 from .clock import Clock
 
 class Sprite(Drawable):
+
+    __slots__ = (
+        "__sprites",
+        "__sprite_idx",
+        "__clock",
+        "__wait_time",
+        "__animation",
+        "__loop"
+    )
+
     def __init__(self, *img_list: Sequence[pygame.Surface], **kwargs):
         self.__sprites = img_list
         Drawable.__init__(self, self.__sprites[0], **kwargs)
