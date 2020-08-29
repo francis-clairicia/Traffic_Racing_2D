@@ -1,6 +1,6 @@
 # -*- coding: Utf-8 -*
 
-from typing import Sequence
+from typing import Sequence, Union
 import pygame
 from .classes import Drawable
 from .clock import Clock
@@ -9,6 +9,7 @@ class Sprite(Drawable):
 
     __slots__ = (
         "__sprites",
+        "__nb_sprites",
         "__sprite_idx",
         "__clock",
         "__wait_time",
@@ -19,11 +20,16 @@ class Sprite(Drawable):
     def __init__(self, *img_list: Sequence[pygame.Surface], **kwargs):
         self.__sprites = img_list
         Drawable.__init__(self, self.__sprites[0], **kwargs)
+        self.__nb_sprites = len(self.__sprites)
         self.__sprite_idx = 0
         self.__clock = Clock()
         self.__wait_time = 0
         self.__animation = False
         self.__loop = False
+
+    @classmethod
+    def from_list(cls, sprite_list: Union[list, tuple], **kwargs):
+        return cls(*sprite_list, **kwargs)
 
     @property
     def ratio(self):
@@ -38,8 +44,7 @@ class Sprite(Drawable):
 
     def __update_animation(self):
         if self.__animation and self.__clock.elapsed_time(self.__wait_time):
-            self.__sprite_idx += 1
-            self.__sprite_idx %= len(self.__sprites)
+            self.__sprite_idx = (self.__sprite_idx + 1) % self.__nb_sprites
             self.image = self.__sprites[self.__sprite_idx]
             if self.__sprite_idx == 0 and not self.__loop:
                 self.__animation = False

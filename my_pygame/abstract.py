@@ -11,6 +11,8 @@ class Drawable(Sprite):
         "__surface",
         "__rect",
         "__mask",
+        "__x",
+        "__y",
         "__rotate",
         "__sounds",
         "__sub_drawables",
@@ -23,7 +25,7 @@ class Drawable(Sprite):
                  rotate: Optional[int] = 0, groups: Optional[Union[List[Group], Tuple[Group, ...]]] = tuple(), **kwargs):
         Sprite.__init__(self, *groups)
         self.__surface = self.__rect = self.__mask = None
-        self.__rotate = 0
+        self.__x = self.__y = self.__rotate = 0
         self.__sounds = list()
         self.__sub_drawables = list()
         self.__former_moves = dict()
@@ -103,6 +105,9 @@ class Drawable(Sprite):
         if self.is_shown():
             surface.blit(self.image, self.rect)
 
+    def blit(self, source, dest, area=None, special_flags=0) -> pygame.Rect:
+        return self.image.blit(source, dest, area=area, special_flags=special_flags)
+
     def move(self, **kwargs) -> None:
         if len(kwargs) == 0:
             return
@@ -114,10 +119,14 @@ class Drawable(Sprite):
         if not any(key in kwargs for key in ("y", "top", "bottom", "centery", *common)):
             kwargs["y"] = y
         self.__rect = self.image.get_rect(**kwargs)
+        self.__x = self.__rect.x
+        self.__y = self.__rect.y
         self.__former_moves = kwargs.copy()
 
     def move_ip(self, x: float, y: float) -> None:
-        self.__rect = self.image.get_rect(x=self.__rect.x + x, y=self.__rect.y + y)
+        self.__x += x
+        self.__y += y
+        self.__rect = self.__surface.get_rect(x=self.__x, y=self.__y)
         self.__former_moves = {"x": self.__rect.x, "y": self.__rect.y}
 
     @property
@@ -383,7 +392,7 @@ class Clickable(Focusable):
         if self.valid_click(event, down=False):
             self.play_on_click_sound()
             self.on_hover()
-            if self.__callback  and self.state != Clickable.DISABLED:
+            if self.__callback and self.state != Clickable.DISABLED:
                 self.__callback()
 
     def event_click_down(self, event: Event) -> None:

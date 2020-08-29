@@ -28,7 +28,7 @@ def load_image(filepath: str, size=None, width=None, height=None) -> pygame.Surf
     w, h = surface.get_size()
     if size:
         surface = set_size(surface, size)
-    elif width  and height:
+    elif width and height:
         if w > width:
             surface = set_width(surface, (w, h), width)
         if h > height:

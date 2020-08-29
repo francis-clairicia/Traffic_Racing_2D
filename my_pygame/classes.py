@@ -46,7 +46,7 @@ class Text(Drawable):
         "__shadow_color"
     )
 
-    def __init__(self, text: str, font: Union[Font, SysFont, Tuple[int, str, str]], color=(0, 0, 0),
+    def __init__(self, text=str(), font=None, color=(0, 0, 0),
                  justify="left", shadow=True, shadow_x=0, shadow_y=0, shadow_color=(0, 0, 0),
                  img=None, compound="left", **kwargs):
         Drawable.__init__(self, **kwargs)
@@ -265,7 +265,7 @@ class RectangleShape(Drawable):
 
 
 class Button(RectangleShape, Clickable):
-    def __init__(self, master, text: str, font=None, img=None, compound="left",
+    def __init__(self, master, text=str(), font=None, img=None, compound="left",
                  command: Optional[Callable[..., Any]] = None, state="normal",
                  bg=(255, 255, 255), fg=(0, 0, 0),
                  outline=2, outline_color=(0, 0, 0),
@@ -360,7 +360,7 @@ class Button(RectangleShape, Clickable):
 class ImageButton(Button):
 
     def __init__(self, master, image: Image, hover_img: Optional[Image] = None, active_img: Optional[Image] = None, show_bg=False, offset=3, **kwargs):
-        Button.__init__(self, master, "", img=image, compound="center", **kwargs)
+        Button.__init__(self, master, img=image, compound="center", **kwargs)
         self.default_img = self.img
         self.hover_img = hover_img
         self.active_img = active_img
@@ -381,9 +381,9 @@ class ImageButton(Button):
 
     def on_hover(self):
         Button.on_hover(self)
-        if self.active_img  and self.active:
+        if self.active_img and self.active:
             self.img = self.active_img
-        elif self.hover_img  and self.hover:
+        elif self.hover_img and self.hover:
             self.img = self.hover_img
         else:
             self.img = self.default_img

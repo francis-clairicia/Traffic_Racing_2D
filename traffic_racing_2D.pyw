@@ -47,6 +47,7 @@ class TrafficRacing(Window):
         self.set_title("Traffic Racing 2D")
         self.set_icon(ICON)
         self.set_fps(120)
+        self.show_fps(SAVE["fps"], font=("calibri", 30))
         self.set_joystick(1)
         self.joystick[0].set_button_axis(False)
         self.bind_key(pygame.K_ESCAPE, lambda key: self.stop())
@@ -77,7 +78,7 @@ class TrafficRacing(Window):
         self.logo.midtop = self.midtop
         self.menu_buttons.center = self.centerx, self.centery + self.menu_buttons[0].height
         self.button_credits.move(bottom=self.bottom - 50, left=self.left + 10)
-        self.show_fps(SAVE["fps"], font=("calibri", 30), top=self.top + 10, centerx=self.centerx)
+        self.move_fps_object(top=self.top + 10, centerx=self.centerx)
 
     def set_grid(self):
         for button in self.menu_buttons:

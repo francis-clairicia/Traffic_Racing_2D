@@ -17,7 +17,7 @@ def format_number(number: float) -> str:
     return f"{number:,}".replace(",", " ")
 
 class Car(Sprite):
-    def __init__(self, *img_list):
+    def __init__(self, img_list):
         Sprite.__init__(self, *img_list, height=55)
         self.speed = 30
 
@@ -54,7 +54,7 @@ class Car(Sprite):
 
 class PlayerCar(Car):
     def __init__(self, car_id: int):
-        Car.__init__(self, *load_image_list(IMG["gameplay_cars"][car_id], height=55))
+        Car.__init__(self, load_image_list(IMG["gameplay_cars"][car_id], height=55))
 
         self.__speed_up = False
         self.__speed_up_offset = 0
@@ -136,7 +136,7 @@ class PlayerCar(Car):
 class TrafficCar(Car):
     def __init__(self, sprites_traffic_cars: dict, car_id: int, way: int):
         side = "opposé" if way in [0, 1] else "normal"
-        Car.__init__(self, *sprites_traffic_cars[side][car_id])
+        Car.__init__(self, sprites_traffic_cars[side][car_id])
         self.way = way
         self.side = 1 if side == "normal" else -1
         self.speed = (35, 40, 50, 60)[car_id - 1]
@@ -368,8 +368,8 @@ class Gameplay(Window):
 
         # Default values
         self.update_clock = Clock()
-        self.update_time = 10 #ms
-        self.pixel_per_sec = 10 # For 1km/h
+        self.update_time = 15 #ms
+        self.pixel_per_sec = 5 # For 1km/h
         self.pixel_per_ms = self.pixel_per_sec * self.update_time / 1000
         self.paused = False
         self.go_to_garage = self.restart = False
@@ -387,7 +387,7 @@ class Gameplay(Window):
         pause.mainloop()
         if self.loop and not self.count_down.is_shown():
             self.count_down.start(at_end=self.return_to_game)
-            self.set_object_priority(self.count_down, self.end_list)
+            self.set_object_priority(self.count_down, self.end_obj_list)
 
     def return_to_game(self):
         self.paused = False
@@ -430,6 +430,11 @@ class Gameplay(Window):
             self.update_infos()
             self.update_background()
             self.update_traffic()
+            self.rect_to_update = (
+                self.road.rect, self.env_up.rect, self.env_down.rect,
+                self.infos_score.rect, self.infos_speed.rect, self.infos_distance.rect,
+                self.infos_time_100.rect, self.infos_time_opposite.rect
+            )
 
     def update_player_car(self):
         if not self.count_down.is_shown():
@@ -463,7 +468,7 @@ class Gameplay(Window):
                     self.play_sound(AUDIO["crash"])
                     self.img_crash.show()
                     self.img_crash.move(centerx=collision[0] + self.car.left, centery=collision[1] + self.car.top)
-                    self.set_object_priority(self.img_crash, self.end_list)
+                    self.set_object_priority(self.img_crash, self.end_obj_list)
         elif self.car.right <= 0 and self.crashed_car.right <= 0:
             self.end_game()
 
@@ -553,13 +558,14 @@ class Gameplay(Window):
         for threshold in (5000, 12500):
             if score >= threshold:
                 nb_cars_to_add += 1
+            else:
+                break
         for _ in range(nb_cars_to_add):
             car = TrafficCar(self.sprites_traffic_cars, random.randint(1, 4), random.choice(ways))
             self.traffic.append(car)
             self.add(car)
             self.ways[car.way].append(car)
-            centery = (self.road[car.way].bottom + self.road[car.way + 1].top) / 2
-            car.move(left=self.right, centery=centery)
+            car.move(left=self.right, centery=(self.road[car.way].bottom + self.road[car.way + 1].top) / 2)
             car.start_animation(loop=True)
             ways.remove(car.way)
         del ways
@@ -579,5 +585,3 @@ class Gameplay(Window):
         time_opposite = round(self.total_time_opposite, 1)
         window = EndGame(self, score, distance, time_100, time_opposite)
         window.mainloop()
-        for car in tuple(self.traffic):
-            self.remove_car_from_traffic(car)

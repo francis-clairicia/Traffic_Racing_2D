@@ -5,12 +5,18 @@ import sys
 from typing import Callable, Any, Union
 import pygame
 from .abstract import Drawable, Focusable
-from .classes import Text
+from .classes import Text, RectangleShape
 from .joystick import Joystick
 from .keyboard import Keyboard
 from .clock import Clock
 
 CONFIG_FILE = os.path.join(sys.path[0], "settings.conf")
+
+class MetaWindow(type):
+    def __call__(cls, *args, **kwargs):
+        window = type.__call__(cls, *args, **kwargs)
+        window.after_init()
+        return window
 
 class WindowCallback(object):
     def __init__(self, callback: Callable[..., Any], wait_time: float):
@@ -24,7 +30,7 @@ class WindowCallback(object):
     def __call__(self):
         return self.callback()
 
-class Window(object):
+class Window(metaclass=MetaWindow):
 
     __all_opened = list()
     __sound_volume = 0.5
@@ -34,25 +40,15 @@ class Window(object):
     actual_music = None
     __show_fps = False
     __fps = 60
-    __fps_params = dict()
+    __fps_obj = None
     joystick = list()
     keyboard = Keyboard()
 
     def __init__(self, master=None, size=(0, 0), flags=0, bg_color=(0, 0, 0), bg_music=None):
-        if not pygame.get_init():
-            pygame.mixer.pre_init(44100, -16, 2, 512)
-            status = pygame.init()
-            if status[1] > 0:
-                print("Error on pygame initialization ({} modules failed to load)".format(status[1]), file=sys.stderr)
-                sys.exit(84)
-            Window.load_sound_volume_from_save()
+        Window.init_pygame(size, flags)
         self.__master = master
         self.window = pygame.display.get_surface()
-        if self.window is None:
-            if size[0] <= 0 or size[1] <= 0:
-                video_info = pygame.display.Info()
-                size = video_info.current_w, video_info.current_h
-            self.window = pygame.display.set_mode(tuple(size), flags)
+        self.rect = self.window.get_rect()
         self.main_clock = pygame.time.Clock()
         self.loop = False
         self.objects = list()
@@ -65,6 +61,7 @@ class Window(object):
         self.mouse_handler_list = list()
         self.bg_color = bg_color
         self.callback_after = list()
+        self.rect_to_update = None
         self.bg_music = bg_music
         focus_event = (
             pygame.KEYDOWN,
@@ -96,6 +93,86 @@ class Window(object):
         self.__key_enabled = True
         self.__screenshot = False
         self.bind_key(pygame.K_F11, lambda event: self.screenshot())
+        if not Window.__fps_obj:
+            Window.__fps_obj = Text(color=(0, 0, 255))
+
+    def after_init(self):
+        self.place_objects()
+        self.set_grid()
+
+    @staticmethod
+    def init_pygame(size=(0, 0), flags=0):
+        if not pygame.get_init():
+            pygame.mixer.pre_init(44100, -16, 2, 512)
+            status = pygame.init()
+            if status[1] > 0:
+                print("Error on pygame initialization ({} modules failed to load)".format(status[1]), file=sys.stderr)
+                sys.exit(84)
+            Window.load_sound_volume_from_save()
+        if pygame.display.get_surface() is None:
+            if size[0] <= 0 or size[1] <= 0:
+                video_info = pygame.display.Info()
+                size = video_info.current_w, video_info.current_h
+            pygame.display.set_mode(tuple(size), flags)
+
+    # @classmethod
+    # def withLoading(cls, text="Loading...", font=("calibri", 300), bg=(0, 0, 0), fg=(255, 255, 255),
+    #                 opening=True, ending=True, side_opening="left", side_ending="right", speed=50,
+    #                 *args, **kwargs):
+    #     Window.init_pygame(kwargs.get("size", (0, 0)), kwargs.get("flags", 0))
+    #     kwargs.pop("size", None)
+    #     kwargs.pop("flags", None)
+    #     window = pygame.display.get_surface()
+    #     window_rect = window.get_rect()
+    #     rectangle = RectangleShape(*window_rect.size, color=bg)
+    #     Text(text, font, fg, center=rectangle.center).draw(rectangle)
+    #     animation_init_opening = {
+    #         "left": {"right": window_rect.left - 1, "centery": window_rect.centery},
+    #         "right": {"left": window_rect.right + 1, "centery": window_rect.centery},
+    #         "top": {"bottom": window_rect.top - 1, "centerx": window_rect.centerx},
+    #         "bottom": {"top": window_rect.bottom + 1, "centerx": window_rect.centerx}
+    #     }
+    #     animation_opening = {
+    #         "left": (speed, 0),
+    #         "right": (-speed, 0),
+    #         "top": (0, speed),
+    #         "bottom": (0, -speed)
+    #     }
+    #     animation_ending = {
+    #         "left": (-speed, 0),
+    #         "right": (speed, 0),
+    #         "top": (0, -speed),
+    #         "bottom": (0, speed)
+    #     }
+    #     rectangle.move(**animation_init_opening[side_opening])
+    #     window_to_hide = window.copy()
+    #     clock = Clock()
+    #     while True:
+    #         if clock.elapsed_time(10):
+    #             rectangle.move_ip(*animation_opening[side_opening])
+    #             if (side_opening == "left" and rectangle.left > window_rect.left) \
+    #             or (side_opening == "right" and rectangle.right < window_rect.right) \
+    #             or (side_opening == "top" and rectangle.top > window_rect.top) \
+    #             or (side_opening == "bottom" and rectangle.bottom < window_rect.bottom) \
+    #             or (not opening):
+    #                 rectangle.move(x=0, y=0)
+    #                 opening = False
+    #             window.blit(window_to_hide, window_rect)
+    #             rectangle.draw(window)
+    #             pygame.display.flip()
+    #             if not opening:
+    #                 break
+    #     new_window = cls(*args, **kwargs)
+    #     while True:
+    #         if clock.elapsed_time(10):
+    #             rectangle.move_ip(*animation_ending[side_ending])
+    #             ending = bool(window_rect.colliderect(rectangle.rect))
+    #             new_window.draw_screen(show_fps=False)
+    #             rectangle.draw(window)
+    #             pygame.display.flip()
+    #             if not ending:
+    #                 break
+    #     return new_window
 
     @property
     def main_window(self) -> bool:
@@ -135,7 +212,8 @@ class Window(object):
         self.focus_remove(obj)
 
     def focus_add(self, obj):
-        self.focusable_objects.append(obj)
+        if issubclass(type(obj), Focusable):
+            self.focusable_objects.append(obj)
 
     def focus_remove(self, obj):
         if obj in self.focusable_objects:
@@ -144,7 +222,7 @@ class Window(object):
                 self.focusable_objects_idx = len(self.focusable_objects) - 1
 
     @property
-    def end_list(self):
+    def end_obj_list(self):
         return len(self.objects)
 
     def set_object_priority(self, obj, new_pos, relative_to=None):
@@ -197,12 +275,13 @@ class Window(object):
     def mainloop(self):
         self.loop = True
         Window.__all_opened.append(self)
-        self.place_objects()
-        self.set_grid()
         if Focusable.MODE != Focusable.MODE_MOUSE and self.focusable_objects_idx < 0:
             self.set_focus(self.focus_next())
         while self.loop:
-            self.main_clock.tick(Window.__fps)
+            for callback in [c for c in self.callback_after if c.can_call()]:
+                callback()
+                self.callback_after.remove(callback)
+            self.fps_update()
             self.update()
             self.keyboard.update()
             for joystick in self.joystick:
@@ -247,8 +326,7 @@ class Window(object):
             if issubclass(type(obj), Focusable):
                 obj.after_drawing(self.window)
         if Window.__show_fps is True and show_fps:
-            params = Window.__fps_params
-            Text(f"{round(self.main_clock.get_fps())} FPS", **params).draw(self.window)
+            Window.__fps_obj.draw(self.window)
         if self.__screenshot:
             pygame.draw.rect(self.window, (255, 255, 255), self.rect, width=30)
 
@@ -259,15 +337,19 @@ class Window(object):
     @staticmethod
     def show_fps(status: bool, **kwargs):
         Window.__show_fps = bool(status)
-        if "font" not in kwargs and "font" not in Window.__fps_params:
-            kwargs["font"] = None
-        if "color" not in kwargs and "color" not in Window.__fps_params:
-            kwargs["color"] = (0, 0, 255)
-        Window.__fps_params.update(**kwargs)
+        Window.__fps_obj.config(**kwargs)
+
+    @staticmethod
+    def move_fps_object(**kwargs):
+        Window.__fps_obj.move(**kwargs)
 
     @staticmethod
     def fps_is_shown() -> bool:
         return Window.__show_fps
+
+    def fps_update(self):
+        self.main_clock.tick(Window.__fps)
+        Window.__fps_obj.txt = f"{round(self.main_clock.get_fps())} FPS"
 
     def show_all(self, without=tuple()):
         for obj in self.objects:
@@ -279,9 +361,8 @@ class Window(object):
             if obj not in without:
                 obj.hide()
 
-    @staticmethod
-    def refresh():
-        pygame.display.flip()
+    def refresh(self):
+        pygame.display.update(self.rect_to_update if self.rect_to_update else self.rect)
 
     def draw_and_refresh(self, *args, **kwargs):
         self.draw_screen(*args, **kwargs)
@@ -305,17 +386,13 @@ class Window(object):
             or (event.type == pygame.KEYDOWN and event.key == pygame.K_F4 and (event.mod & pygame.KMOD_LALT)):
                 self.stop(force=True)
             elif event.type == pygame.KEYDOWN:
-                for callback in self.key_handler_dict.get(event.key, list()):
+                for callback in self.key_handler_dict.get(event.key, tuple()):
                     callback(event)
             elif event.type == pygame.JOYBUTTONDOWN:
-                for callback in self.joystick_handler_dict.get(event.joy, dict()).get(self.joystick[event.joy].search_key("button", event.button), list()):
+                for callback in self.joystick_handler_dict.get(event.joy, dict()).get(self.joystick[event.joy].search_key("button", event.button), tuple()):
                     callback(event)
-            for callback in self.event_handler_dict.get(event.type, list()):
+            for callback in self.event_handler_dict.get(event.type, tuple()):
                 callback(event)
-        for callback in self.callback_after.copy():
-            if callback.can_call():
-                callback()
-                self.callback_after.remove(callback)
 
     def handle_focus(self, event: pygame.event.Event) -> None:
         if event.type in [pygame.KEYDOWN, pygame.JOYHATMOTION]:
@@ -513,7 +590,6 @@ class Window(object):
         with open(CONFIG_FILE, "w") as file:
             file.write(config)
 
-    rect = property(lambda self: self.window.get_rect())
     left = property(lambda self: self.rect.left)
     right = property(lambda self: self.rect.right)
     top = property(lambda self: self.rect.top)
