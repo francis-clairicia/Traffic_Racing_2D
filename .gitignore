@@ -9,7 +9,7 @@ __pycache__/
 #Personal files
 joystick.bin
 files/save.bin
-settings.conf
+window.conf
 
 # Distribution / packaging
 .Python
