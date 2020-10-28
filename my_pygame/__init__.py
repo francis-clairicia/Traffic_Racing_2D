@@ -2,7 +2,7 @@
 
 from .window import Window
 from .abstract import Drawable, Clickable, Focusable
-from .classes import Image, Text, RectangleShape
+from .classes import Image, Text, RectangleShape, CircleShape
 from .classes import Button, ImageButton
 from .classes import Entry, ProgressBar, Scale, CheckBox
 from .list import DrawableList

@@ -8,26 +8,11 @@ import pygame
 
 class Joystick(object):
 
-    __slots__ = (
-        "__index",
-        "__name",
-        "__button_list",
-        "__axis_list",
-        "__dpad_list",
-        "__event_type",
-        "__event_state",
-        "__save_file",
-        "__save",
-        "__nb_update",
-        "__nb_update_to_uninitialize",
-        "__button_axis_return_bool"
-    )
-
     def __init__(self, index: int):
-        self.id = index
-        self.__name = str()
+        self.__index = index
+        self.__joystick = None
 
-        self.__button_list = ["A", "B", "X", "Y", "L1", "L2", "R1", "R2", "SELECT", "START", "HOME", "L3", "R3"]
+        self.__button_list = ["A", "B", "X", "Y", "L1", "L2", "R1", "R2", "SELECT", "START", "L3", "R3", "HOME"]
         self.__axis_list = ["AXIS_LEFT_X", "AXIS_LEFT_Y", "AXIS_RIGHT_X", "AXIS_RIGHT_Y"]
         self.__dpad_list = ["UP", "DOWN", "LEFT", "RIGHT"]
 
@@ -48,19 +33,31 @@ class Joystick(object):
     """-----------------------------------------------------"""
 
     def connected(self) -> bool:
-        return bool(len(self.__name))
+        return bool(self.__joystick is not None)
+
+    def event_connect(self, event: pygame.event.Event) -> None:
+        if self.connected():
+            return
+        if event.type in (pygame.CONTROLLERDEVICEADDED, pygame.JOYDEVICEADDED) and event.device_index == self.__index:
+            self.__joystick = pygame.joystick.Joystick(event.device_index)
+            self.__joystick.init()
+
+    def event_disconnect(self, event: pygame.event.Event) -> None:
+        if not self.connected():
+            return
+        if event.type in (pygame.CONTROLLERDEVICEREMOVED, pygame.JOYDEVICEREMOVED) and event.instance_id == self.id:
+            self.__joystick.quit()
+            self.__joystick = None
 
     def update(self) -> None:
-        joystick = None
+        if not self.connected():
+            return
+        joystick = self.__joystick
         try:
-            joystick = pygame.joystick.Joystick(self.id)
-            joystick.init()
-            self.__name = joystick.get_name()
-            if self.__name in self.__save:
-                self.__event_type = self.__save[self.__name]
+            if self.guid in self.__save:
+                self.__event_type = self.__save[self.guid]
             else:
                 self.set_default_layout()
-                self.__save_to_file()
             actions = [
                 ("button", joystick.get_numbuttons, joystick.get_button),
                 ("axis", joystick.get_numaxes, joystick.get_axis),
@@ -70,23 +67,8 @@ class Joystick(object):
                 for i in range(get_max_number()):
                     self.__event_state[event][i] = get_value(i)
         except pygame.error:
-            self.__name = str()
-            self.__nb_update = self.__nb_update_to_uninitialize
             for key in self.__event_state:
                 self.__event_state[key].clear()
-        if joystick is None:
-            return
-        if self.connected():
-            for key in self.button_list + self.dpad_list + self.axis_list:
-                if self[key] != 0:
-                    self.__nb_update = 0
-                    break
-        if self.__nb_update == self.__nb_update_to_uninitialize:
-            if joystick.get_init():
-                joystick.quit()
-            self.__nb_update = 0
-        else:
-            self.__nb_update += 1
 
     """------------------------------------------------------------------"""
 
@@ -100,9 +82,9 @@ class Joystick(object):
             "R1":           ("button", 5, 1),
             "SELECT":       ("button", 6, 1),
             "START":        ("button", 7, 1),
-            "HOME":         ("button", 8, 1),
-            "L3":           ("button", 9, 1),
-            "R3":           ("button", 10, 1),
+            "L3":           ("button", 8, 1),
+            "R3":           ("button", 9, 1),
+            "HOME":         ("button", 10, 1),
             "UP":           ("hat", 0, (0, 1)),
             "DOWN":         ("hat", 0, (0, -1)),
             "LEFT":         ("hat", 0, (-1, 0)),
@@ -119,7 +101,7 @@ class Joystick(object):
                 self.__event_type[key][i] = layout[key][i]
 
     def __save_to_file(self):
-        self.__save[self.__name] = dict(self.__event_type)
+        self.__save[self.guid] = dict(self.__event_type)
         with open(self.__save_file, "wb") as save:
             pickle.dump(self.__save, save)
 
@@ -197,18 +179,16 @@ class Joystick(object):
     """------------------------------------------------------------------"""
 
     @property
-    def id(self):
-        return self.__index
-
-    @id.setter
-    def id(self, v: int):
-        if not isinstance(v, int):
-            raise TypeError("index value must be an int")
-        self.__index = v
+    def id(self) -> int:
+        return self.__joystick.get_instance_id() if self.connected() else -1
 
     @property
-    def name(self):
-        return self.__name
+    def guid(self) -> str:
+        return self.__joystick.get_guid() if self.connected() else str()
+
+    @property
+    def name(self) -> str:
+        return self.__joystick.get_name() if self.connected() else str()
 
     """------------------------------------------------------------------"""
 

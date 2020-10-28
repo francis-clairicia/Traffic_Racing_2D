@@ -3,7 +3,7 @@
 import os
 import sys
 import configparser
-from typing import Callable, Any, Union, Optional, Type
+from typing import Callable, Any, Union, Optional, Type, Sequence
 import pygame
 from .abstract import Drawable, Focusable
 from .classes import Text, RectangleShape
@@ -39,7 +39,7 @@ class Window:
     __show_fps = False
     __fps = 60
     __fps_obj = None
-    joystick = list()
+    __joystick = list()
     keyboard = Keyboard()
 
     def __init__(self, master=None, size=(0, 0), flags=0, bg_color=(0, 0, 0), bg_music=None):
@@ -115,15 +115,27 @@ class Window:
 
     @property
     def main_window(self) -> bool:
+        if not Window.__all_opened:
+            return True
         return bool(Window.__all_opened[0] == self)
 
-    @staticmethod
-    def set_joystick(nb_joysticks: int):
-        for i in range(nb_joysticks):
-            if i >= len(Window.joystick):
-                Window.joystick.append(Joystick(i))
-        while len(Window.joystick) > nb_joysticks:
-            del Window.joystick[-1]
+    def set_joystick(self, nb_joysticks: int):
+        Window.__joystick = [Joystick(i) for i in range(nb_joysticks)]
+        for joy in self.joystick:
+            self.bind_event(pygame.JOYDEVICEADDED, joy.event_connect)
+            self.bind_event(pygame.CONTROLLERDEVICEADDED, joy.event_connect)
+            self.bind_event(pygame.JOYDEVICEREMOVED, joy.event_disconnect)
+            self.bind_event(pygame.CONTROLLERDEVICEREMOVED, joy.event_disconnect)
+
+    @property
+    def joystick(self) -> Sequence[Joystick]:
+        return Window.__joystick
+
+    def joy_search_device_index_from_instance_id(self, instance_id: int):
+        for i, joy in enumerate(self.joystick):
+            if joy.id == instance_id:
+                return i
+        return -1
 
     def __setattr__(self, name, obj):
         if isinstance(obj, (Drawable, DrawableList)) and name != "objects":
@@ -279,7 +291,8 @@ class Window:
                 for callback in self.key_handler_dict.get(event.key, tuple()):
                     callback(event)
             elif event.type == pygame.JOYBUTTONDOWN:
-                for callback in self.joystick_handler_dict.get(event.joy, dict()).get(self.joystick[event.joy].search_key("button", event.button), tuple()):
+                joy = self.joy_search_device_index_from_instance_id(event.instance_id)
+                for callback in self.joystick_handler_dict.get(joy, dict()).get(self.joystick[joy].search_key("button", event.button), tuple()):
                     callback(event)
             for callback in self.event_handler_dict.get(event.type, tuple()):
                 callback(event)

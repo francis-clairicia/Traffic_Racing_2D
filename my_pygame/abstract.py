@@ -72,12 +72,15 @@ class Drawable(Sprite):
     def draw(self, surface: pygame.Surface) -> None:
         if self.is_shown():
             self.before_drawing(surface)
-            surface.blit(self.image, self.rect)
+            self.image_drawing(surface)
             self.after_drawing(surface)
             self.focus_drawing(surface)
 
     def before_drawing(self, surface: pygame.Surface) -> None:
         pass
+
+    def image_drawing(self, surface: pygame.Surface) -> None:
+        surface.blit(self.image, self.rect)
 
     def after_drawing(self, surface: pygame.Surface) -> None:
         pass
