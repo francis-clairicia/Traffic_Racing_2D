@@ -13,8 +13,7 @@ class Clock(object):
     def get_elapsed_time(self) -> int:
         self.__clock.tick()
         self.__time += self.__clock.get_rawtime()
-        time = self.__time
-        return time
+        return self.__time
 
     def elapsed_time(self, milliseconds: int, restart=True) -> bool:
         if self.get_elapsed_time() >= milliseconds:

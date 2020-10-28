@@ -26,7 +26,6 @@ class Save:
             pickle.dump(self.__save, save)
 
     def set_default_options(self):
-        self.__save["fps"] = False
         self.__save["auto_acceleration"] = False
         self.__save["controls"] = {
             "speed_up": {"key": "RIGHT", "joy": "A"},

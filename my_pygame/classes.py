@@ -5,17 +5,14 @@ import pygame
 from pygame.event import Event
 from pygame.font import Font, SysFont
 from .abstract import Drawable, Clickable
-from .image import load_image
 
 class Image(Drawable):
 
-    __slots__ = ("__filepath")
+    def __init__(self, surface: pygame.Surface, size=None, width=None, height=None, **kwargs):
+        Drawable.__init__(self, surface=surface, **kwargs)
+        self.__handle_img_size(size, width, height)
 
-    def __init__(self, filepath: str, size=None, width=None, height=None, **kwargs):
-        Drawable.__init__(self, load_image(filepath, size, width, height), **kwargs)
-        self.__filepath = filepath
-
-    def load(self, filepath: str, keep_width=False, keep_height=False) -> None:
+    def load(self, surface: pygame.Surface, keep_width=False, keep_height=False) -> None:
         width = height = None
         if keep_width and keep_height:
             width, height = self.size
@@ -23,28 +20,28 @@ class Image(Drawable):
             width = self.width
         elif keep_height:
             height = self.height
-        self.image = load_image(filepath, width=width, height=height)
-        self.__filepath = filepath
+        self.image = surface
+        self.__handle_img_size(None, width, height)
 
-    def copy(self):
-        return Image(self.__filepath, size=self.size, rotate=self.rotate)
+    def __handle_img_size(self, size, width, height):
+        w, h = self.size
+        if size is not None:
+            self.set_size(size)
+        elif width is not None and height is not None:
+            if w > width:
+                self.set_width(width)
+            if h > height:
+                self.set_height(height)
+        elif width is not None:
+            self.set_width(width)
+        elif height is not None:
+            self.set_height(height)
 
 class Text(Drawable):
 
     T_LEFT = "left"
     T_RIGHT = "right"
     T_CENTER = "center"
-
-    __slots__ = (
-        #Hidden attributes
-        "__str",
-        "__font",
-        "__img",
-        "__compound",
-        "__shadow",
-        "__shadow_surface",
-        "__shadow_color"
-    )
 
     def __init__(self, text=str(), font=None, color=(0, 0, 0),
                  justify="left", shadow=True, shadow_x=0, shadow_y=0, shadow_color=(0, 0, 0),
@@ -56,10 +53,10 @@ class Text(Drawable):
         self.__img = None
         self.__compound = self.__justify = "left"
         self.__shadow = (0, 0)
-        self.__shadow_surface = Text(self.txt, self.font, (0, 0, 0), shadow=False) if shadow else None
+        self.__shadow_surface = Text(self.message, self.font, (0, 0, 0), shadow=False) if shadow else None
         self.__shadow_color = (0, 0, 0)
         self.shadow_color = shadow_color
-        self.config(txt=text, font=font, color=color, img=img, justify=justify, compound=compound, shadow=(shadow_x, shadow_y))
+        self.config(message=text, font=font, color=color, img=img, justify=justify, compound=compound, shadow=(shadow_x, shadow_y))
         self.__update_surface()
 
     @property
@@ -71,12 +68,12 @@ class Text(Drawable):
         self.config(font=font)
 
     @property
-    def txt(self) -> str:
+    def message(self) -> str:
         return self.__str
 
-    @txt.setter
-    def txt(self, string: str) -> None:
-        self.config(txt=string)
+    @message.setter
+    def message(self, string: str) -> None:
+        self.config(message=string)
 
     @property
     def img(self):
@@ -130,8 +127,8 @@ class Text(Drawable):
 
     def config(self, **kwargs):
         config_for_shadow = dict()
-        if "txt" in kwargs:
-            config_for_shadow["txt"] = self.__str = str(kwargs["txt"])
+        if "message" in kwargs:
+            config_for_shadow["message"] = self.__str = str(kwargs["message"])
         if "font" in kwargs:
             font = kwargs["font"]
             if isinstance(font, (tuple, list)):
@@ -169,15 +166,14 @@ class Text(Drawable):
         if self.__shadow_surface:
             self.__shadow_surface.config(**config_for_shadow)
 
-    def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown() and self.__shadow_surface and self.__shadow_surface.is_shown():
+    def before_drawing(self, surface: pygame.Surface):
+        if self.__shadow_surface and self.__shadow_surface.is_shown():
             self.__shadow_surface.move(x=self.x + self.shadow[0], y=self.y + self.shadow[1])
             self.__shadow_surface.draw(surface)
-        Drawable.draw(self, surface)
 
     def __update_surface(self) -> None:
         render_lines = list()
-        for line in self.txt.splitlines():
+        for line in self.message.splitlines():
             render = self.font.render(line, True, self.color)
             render_lines.append(render)
         if render_lines:
@@ -236,23 +232,15 @@ class Text(Drawable):
 
 class RectangleShape(Drawable):
 
-    __slots__ = (
-        "__color",
-        "outline"
-        "outline_color"
-    )
-
     def __init__(self, width: int, height: int, color: tuple, outline=0, outline_color=(0, 0, 0), **kwargs):
         Drawable.__init__(self, pygame.Surface((int(width), int(height)), flags=pygame.SRCALPHA), **kwargs)
         self.color = color
         self.outline = outline
         self.outline_color = outline_color
 
-    def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown():
-            Drawable.draw(self, surface)
-            if self.outline > 0:
-                pygame.draw.rect(surface, self.outline_color, self.rect, self.outline)
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        if self.outline > 0:
+            pygame.draw.rect(surface, self.outline_color, self.rect, self.outline)
 
     @property
     def color(self):
@@ -263,10 +251,9 @@ class RectangleShape(Drawable):
         self.image.fill(value)
         self.__color = value
 
-
-class Button(RectangleShape, Clickable):
+class Button(Clickable, RectangleShape):
     def __init__(self, master, text=str(), font=None, img=None, compound="left",
-                 command: Optional[Callable[..., Any]] = None, state="normal",
+                 callback: Optional[Callable[..., Any]] = None, state="normal",
                  bg=(255, 255, 255), fg=(0, 0, 0),
                  outline=2, outline_color=(0, 0, 0),
                  hover_bg=(235, 235, 235), hover_fg=None, hover_sound=None,
@@ -274,9 +261,9 @@ class Button(RectangleShape, Clickable):
                  disabled_bg=(128, 128, 128), disabled_fg=None, disabled_sound=None,
                  highlight_color=(0, 0, 255),
                  **kwargs):
-        RectangleShape.__init__(self, width=1, height=1, color=bg, outline=outline, outline_color=outline_color, **kwargs)
         self.text = Text(text, font, fg, justify=Text.T_CENTER, img=img, compound=compound)
-        self.set_size(self.text.w + 20, self.text.h + 20)
+        size = (self.text.w + 20, self.text.h + 20)
+        RectangleShape.__init__(self, *size, color=bg, outline=outline, outline_color=outline_color, **kwargs)
         self.fg = fg
         self.bg = bg
         self.hover_fg = fg if hover_fg is None else hover_fg
@@ -285,14 +272,14 @@ class Button(RectangleShape, Clickable):
         self.active_bg = bg if active_bg is None else active_bg
         self.disabled_fg = fg if disabled_fg is None else disabled_fg
         self.disabled_bg = bg if disabled_bg is None else disabled_bg
-        Clickable.__init__(self, master, command, state, hover_sound, on_click_sound, disabled_sound, highlight_color=highlight_color)
+        Clickable.__init__(self, master, callback, state, hover_sound, on_click_sound, disabled_sound, highlight_color=highlight_color)
 
     def set_text(self, string: str) -> None:
-        self.text.txt = string
+        self.text.message = string
         self.set_size(self.text.w + 20, self.text.h + 20)
 
     def get_text(self) -> str:
-        return self.text.txt
+        return self.text.message
 
     def set_font(self, font) -> None:
         self.text.font = font
@@ -310,11 +297,10 @@ class Button(RectangleShape, Clickable):
         self.text.img = img
         self.set_size(self.text.w + 20, self.text.h + 20)
 
-    def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown():
-            RectangleShape.draw(self, surface)
-            self.text.move(center=self.center)
-            self.text.draw(surface)
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        RectangleShape.after_drawing(self, surface)
+        self.text.move(center=self.center)
+        self.text.draw(surface)
 
     def on_hover(self) -> None:
         if self.state == Clickable.DISABLED:
@@ -357,27 +343,37 @@ class Button(RectangleShape, Clickable):
         self.color = bg
         self.text.color = fg
 
+    def on_active_unset(self) -> None:
+        self.set_default_colors()
+
 class ImageButton(Button):
 
-    def __init__(self, master, image: Image, hover_img: Optional[Image] = None, active_img: Optional[Image] = None, show_bg=False, offset=3, **kwargs):
-        Button.__init__(self, master, img=image, compound="center", **kwargs)
+    def __init__(self, master, img: pygame.Surface, hover_img: Optional[pygame.Surface] = None, active_img: Optional[pygame.Surface] = None, show_bg=False, offset=3, **kwargs):
+        Button.__init__(self, master, img=Image(img), compound="center", **kwargs)
         self.default_img = self.img
-        self.hover_img = hover_img
-        self.active_img = active_img
+        self.hover_img = Image(hover_img) if isinstance(hover_img, pygame.Surface) else None
+        self.active_img = Image(active_img) if isinstance(active_img, pygame.Surface) else None
         self.show_background(show_bg)
         self.__offset = offset
         self.offset = 0
 
     def show_background(self, status: bool) -> None:
-        self._show = bool(status)
+        self.__show = bool(status)
 
     def draw(self, surface: pygame.Surface) -> None:
         if self.is_shown():
-            if self._show:
-                RectangleShape.draw(self, surface)
-            self.img.move(center=self.center)
-            self.img.move_ip(0, self.offset)
-            self.img.draw(surface)
+            self.before_drawing(surface)
+            if self.__show:
+                Drawable.draw(self, surface)
+            self.after_drawing(surface)
+            self.focus_drawing(surface)
+
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        if self.__show:
+            RectangleShape.after_drawing(self, surface)
+        self.text.move(center=self.center)
+        self.text.move_ip(0, self.offset)
+        self.text.draw(surface)
 
     def on_hover(self):
         Button.on_hover(self)
@@ -389,79 +385,45 @@ class ImageButton(Button):
             self.img = self.default_img
 
     def on_active_set(self):
-        Button.on_active_set(self)
         if self.active_img:
             self.img = self.active_img
         self.offset = self.__offset
 
     def on_active_unset(self):
-        if self._show:
-            Button.on_active_unset(self)
         self.img = self.default_img
         self.offset = 0
 
-class TextButton(Button):
-    def __init__(self, master, text: str, font, color=(0, 0, 0), outline=0, shadow=(0, 0, 0), offset=3, **kwargs):
-        kwargs["bg"] = kwargs["hover_bg"] = kwargs["active_bg"] = (0, 0, 0, 0)
-        kwargs["fg"] = color
-        kwargs["img"] = None
-        Button.__init__(self, master, text, font=font, outline=outline, **kwargs)
-        self.shadow = shadow
-        self.__offset = offset
-        self.offset = 0
-
-    def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown():
-            RectangleShape.draw(self, surface)
-            self.text.move(center=self.center)
-            if self.offset != self.__offset:
-                color = tuple(self.text.color)
-                self.text.color = self.shadow
-                self.text.move_ip(0, self.__offset)
-                self.text.draw(surface)
-                self.text.color = color
-                self.text.move(center=self.center)
-            self.text.move_ip(0, self.offset)
-            self.text.draw(surface)
-
-    def on_click_up(self, event):
-        self.offset = 0
-
-    def on_click_down(self, event):
-        self.offset = self.__offset
-
-class Entry(RectangleShape, Clickable):
+class Entry(Clickable, RectangleShape):
     def __init__(self, master, font=None, width=10, bg=(255, 255, 255), fg=(0, 0, 0),
                  state="normal", highlight_color=(128, 128, 128), **kwargs):
         self.text = Text("".join("1" for _ in range(width)), font, fg)
         size = (self.text.w + 20, self.text.h + 20)
-        RectangleShape.__init__(self, size, bg, **kwargs)
+        RectangleShape.__init__(self, *size, bg, **kwargs)
         Clickable.__init__(self, master, state=state, highlight_color=highlight_color)
-        self.text.txt = ""
+        self.text.message = ""
         self.nb_chars = width
         master.bind_event(pygame.MOUSEBUTTONUP, self.focus_set)
         master.bind_event(pygame.KEYDOWN, self.key_press)
 
-    def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown():
-            RectangleShape.draw(self, surface)
-            self.text.move(left=self.left + 10, centery=self.centery)
-            self.text.draw(surface)
-            if self.has_focus():
-                cursor_start = (self.text.right + 2, self.text.top)
-                cursor_end = (self.text.right + 2, self.text.bottom)
-                pygame.draw.line(surface, self.text.color, cursor_start, cursor_end, 2)
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        RectangleShape.after_drawing(self, surface)
+        self.text.move(left=self.left + 10, centery=self.centery)
+        self.text.draw(surface)
+        if self.has_focus():
+            cursor_start = (self.text.right + 2, self.text.top)
+            cursor_end = (self.text.right + 2, self.text.bottom)
+            pygame.draw.line(surface, self.text.color, cursor_start, cursor_end, 2)
 
     def get(self) -> str:
-        return self.text.txt
+        return self.text.message
 
     def key_press(self, event: Event) -> None:
         if not self.has_focus():
             return
         if event.key == pygame.K_BACKSPACE:
-            self.text.txt = self.text.txt[:-1]
-        elif len(self.text.txt) < self.nb_chars:
-            self.text.txt += event.unicode
+            self.text.message = self.text.message[:-1]
+        elif len(self.text.message) < self.nb_chars:
+            self.text.message += event.unicode
 
 class ProgressBar(RectangleShape):
 
@@ -490,27 +452,28 @@ class ProgressBar(RectangleShape):
         self.scale_rect.set_size(*args, smooth=smooth)
         self.bg_rect.set_size(*args, smooth=smooth)
 
-    def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown():
-            self.scale_rect.set_size(self.width * self.percent, self.height, smooth=False)
-            self.bg_rect.move(x=self.x, centery=self.centery)
-            self.scale_rect.move(x=self.x, centery=self.centery)
-            self.bg_rect.draw(surface)
-            self.scale_rect.draw(surface)
-            RectangleShape.draw(self, surface)
-            if len(self.__show_value_params) > 0:
-                font = self.__show_value_params["font"]
-                color = self.__show_value_params["color"]
-                movements = self.__show_value_params["movements"]
-                round_n = self.__show_value_params["round"]
-                value = round(self.value, round_n) if round_n > 0 else round(self.value)
-                Text(value, font, color, **movements).draw(surface)
-            if len(self.__show_label_params) > 0:
-                label = self.__show_label_params["label"]
-                font = self.__show_label_params["font"]
-                color = self.__show_label_params["color"]
-                movements = self.__show_label_params["movements"]
-                Text(label, font, color, **movements).draw(surface)
+    def before_drawing(self, surface: pygame.Surface) -> None:
+        self.scale_rect.set_size(self.width * self.percent, self.height, smooth=False)
+        self.bg_rect.move(x=self.x, centery=self.centery)
+        self.scale_rect.move(x=self.x, centery=self.centery)
+        self.bg_rect.draw(surface)
+        self.scale_rect.draw(surface)
+
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        RectangleShape.after_drawing(self, surface)
+        if len(self.__show_value_params) > 0:
+            font = self.__show_value_params["font"]
+            color = self.__show_value_params["color"]
+            movements = self.__show_value_params["movements"]
+            round_n = self.__show_value_params["round"]
+            value = round(self.value, round_n) if round_n > 0 else round(self.value)
+            Text(value, font, color, **movements).draw(surface)
+        if len(self.__show_label_params) > 0:
+            label = self.__show_label_params["label"]
+            font = self.__show_label_params["font"]
+            color = self.__show_label_params["color"]
+            movements = self.__show_label_params["movements"]
+            Text(label, font, color, **movements).draw(surface)
 
     def show_value(self, side, font=None, color=(0, 0, 0), round_n=0):
         offset = 10
@@ -563,18 +526,18 @@ class ProgressBar(RectangleShape):
         self.__value = value
         self.__percent = (self.__value - self.__start) / (self.__end - self.__start)
 
-class Scale(ProgressBar, Clickable):
-    def __init__(self, master, command=None, state="normal",
+class Scale(Clickable, ProgressBar):
+    def __init__(self, master, callback=None, state="normal",
                  highlight_color=(0, 0, 255), hover_sound=None, on_click_sound=None, **kwargs):
         ProgressBar.__init__(self, **kwargs)
-        Clickable.__init__(self, master, command, state=state, highlight_color=highlight_color, hover_sound=hover_sound, on_click_sound=on_click_sound)
+        Clickable.__init__(self, master, callback, state=state, highlight_color=highlight_color, hover_sound=hover_sound, on_click_sound=on_click_sound)
         master.bind_joystick_axis(0, "AXIS_LEFT_X", self.axis_event)
         master.bind_key(pygame.K_KP_MINUS, self.key_event, hold=True)
         master.bind_key(pygame.K_KP_PLUS, self.key_event, hold=True)
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def before_drawing(self, surface: pygame.Surface) -> None:
         self.call_update()
-        ProgressBar.draw(self, surface)
+        ProgressBar.before_drawing(self, surface)
 
     def mouse_move_event(self, mouse_pos) -> None:
         if self.active:
@@ -601,16 +564,16 @@ class Scale(ProgressBar, Clickable):
         self.mouse_move_event(mouse_pos)
 
     def call_update(self):
-        if hasattr(self, "command") and self.command:
-            self.command.__call__()
+        if hasattr(self, "callback") and self.callback:
+            self.callback.__call__()
 
-class CheckBox(RectangleShape, Clickable):
+class CheckBox(Clickable, RectangleShape):
     def __init__(self, master, width: int, height: int, color: tuple, value=False, on_value=True, off_value=False,
-                 outline=2, image: Optional[Image] = None, command: Optional[Callable[..., Any]] = None,
+                 outline=2, image: Optional[Image] = None, callback: Optional[Callable[..., Any]] = None,
                  highlight_color=(0, 0, 255), state="normal", hover_sound=None, on_click_sound=None, **kwargs):
         RectangleShape.__init__(self, width, height, color, outline=outline, **kwargs)
         Clickable.__init__(self, master, self.change_value, state, highlight_color=highlight_color, hover_sound=hover_sound, on_click_sound=on_click_sound)
-        self.__on_changed_value = command
+        self.__on_changed_value = callback
         self.active_img = image
         self.__on_value = on_value
         self.__off_value = off_value
@@ -630,27 +593,27 @@ class CheckBox(RectangleShape, Clickable):
         if self.__on_changed_value:
             self.__on_changed_value(self.__value)
 
-    def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown():
-            RectangleShape.draw(self, surface)
-            if self.value == self.__on_value:
-                if isinstance(self.active_img, Image):
-                    self.active_img.center = self.center
-                    self.active_img.draw(surface)
-                else:
-                    x, y = self.center
-                    w, h = self.size
-                    pygame.draw.line(
-                        surface, self.outline_color,
-                        (x - (0.7*w)//2, y + (0.7*h)//2),
-                        (x + (0.7*w)//2, y - (0.7*h)//2),
-                        width=2
-                    )
-                    pygame.draw.line(
-                        surface, self.outline_color,
-                        (x - (0.7*w)//2, y - (0.7*h)//2),
-                        (x + (0.7*w)//2, y + (0.7*h)//2),
-                        width=2
-                    )
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        RectangleShape.after_drawing(self, surface)
+        if self.value == self.__on_value:
+            if isinstance(self.active_img, Image):
+                self.active_img.center = self.center
+                self.active_img.draw(surface)
+            else:
+                x, y = self.center
+                w, h = self.size
+                pygame.draw.line(
+                    surface, self.outline_color,
+                    (x - (0.7*w)//2, y + (0.7*h)//2),
+                    (x + (0.7*w)//2, y - (0.7*h)//2),
+                    width=2
+                )
+                pygame.draw.line(
+                    surface, self.outline_color,
+                    (x - (0.7*w)//2, y - (0.7*h)//2),
+                    (x + (0.7*w)//2, y + (0.7*h)//2),
+                    width=2
+                )
+
     def change_value(self):
         self.value = not self.value

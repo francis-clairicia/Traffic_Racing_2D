@@ -2,34 +2,26 @@
 
 from typing import Sequence, Union
 import pygame
-from .classes import Drawable
+from .classes import Image
 from .clock import Clock
 
-class Sprite(Drawable):
+class Sprite(Image):
 
-    __slots__ = (
-        "__sprites",
-        "__nb_sprites",
-        "__sprite_idx",
-        "__clock",
-        "__wait_time",
-        "__animation",
-        "__loop"
-    )
-
-    def __init__(self, *img_list: Sequence[pygame.Surface], **kwargs):
-        self.__sprites = img_list
-        Drawable.__init__(self, self.__sprites[0], **kwargs)
+    def __init__(self, *img: pygame.Surface, **kwargs):
+        self.__sprites = img
+        Image.__init__(self, self.__sprites[0], **kwargs)
         self.__nb_sprites = len(self.__sprites)
         self.__sprite_idx = 0
         self.__clock = Clock()
         self.__wait_time = 0
         self.__animation = False
         self.__loop = False
+        self.__fix_width = bool("width" in kwargs)
+        self.__fix_height = bool("height" in kwargs)
 
     @classmethod
-    def from_list(cls, sprite_list: Union[list, tuple], **kwargs):
-        return cls(*sprite_list, **kwargs)
+    def from_list(cls, img_list: Sequence[pygame.Surface], **kwargs):
+        return cls(*img_list, **kwargs)
 
     @property
     def ratio(self):
@@ -45,13 +37,12 @@ class Sprite(Drawable):
     def __update_animation(self):
         if self.__animation and self.__clock.elapsed_time(self.__wait_time):
             self.__sprite_idx = (self.__sprite_idx + 1) % self.__nb_sprites
-            self.image = self.__sprites[self.__sprite_idx]
+            self.load(self.__sprites[self.__sprite_idx], keep_width=self.__fix_width, keep_height= self.__fix_height)
             if self.__sprite_idx == 0 and not self.__loop:
                 self.__animation = False
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def before_drawing(self, surface: pygame.Surface) -> None:
         self.__update_animation()
-        Drawable.draw(self, surface)
 
     def start_animation(self, loop=False):
         self.__animation = True

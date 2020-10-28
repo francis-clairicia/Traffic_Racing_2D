@@ -3,17 +3,17 @@
 import pygame
 from my_pygame import Window, RectangleShape, Text, Button, ImageButton, Image, CheckBox, Scale
 from my_pygame import GREEN, GREEN_DARK, TRANSPARENT, YELLOW, RED, RED_DARK, RED_LIGHT, WHITE
-from constants import FONT, AUDIO, IMG
+from constants import RESOURCES
 from save import SAVE
 
 class Options(Window):
     def __init__(self, master: Window):
         Window.__init__(self, master=master, bg_music=master.bg_music)
         self.frame = RectangleShape(0.60 * self.width, 0.60 * self.height, GREEN, outline=3)
-        self.title = Text("Options", font=(FONT["algerian"], 70))
+        self.title = Text("Options", font=(RESOURCES.FONT["algerian"], 70))
 
-        self.options_font = (FONT["algerian"], 40)
-        self.case_font = (FONT["algerian"], 30)
+        self.options_font = (RESOURCES.FONT["algerian"], 40)
+        self.case_font = (RESOURCES.FONT["algerian"], 30)
         params_for_all_scales = {
             "width": 0.45 * self.frame.w,
             "color": TRANSPARENT,
@@ -24,10 +24,10 @@ class Options(Window):
         }
         params_for_all_buttons = {
             "highlight_color": YELLOW,
-            "hover_sound": AUDIO["select"],
+            "hover_sound": RESOURCES.SFX["select"],
         }
         params_for_option_buttons = {
-            "on_click_sound": AUDIO["validate"]
+            "on_click_sound": RESOURCES.SFX["validate"]
         }
         params_for_reset_button = {
             "bg": RED,
@@ -36,46 +36,49 @@ class Options(Window):
             "active_bg": RED_DARK,
         }
 
-        self.button_back = ImageButton(self, Image(IMG["blue_arrow"]), on_click_sound=AUDIO["back"], **params_for_all_buttons, command=self.stop)
+        self.button_back = ImageButton(self, img=RESOURCES.IMG["blue_arrow"], on_click_sound=RESOURCES.SFX["back"], **params_for_all_buttons, callback=self.stop)
         self.page = 1
 
         ## PAGE 1 ##
-        valid_img = Image(IMG["green_valid"])
+        valid_img = Image(RESOURCES.IMG["green_valid"])
         self.text_music = Text("Music:", self.options_font)
         self.cb_music = CheckBox(
             self, 30, 30, TRANSPARENT, image=valid_img,
-            value=self.get_music_state(), command=self.set_music_state,
+            value=self.get_music_state(), callback=self.set_music_state,
             **params_for_all_buttons, **params_for_option_buttons
         )
         self.scale_music = Scale(
             self, **params_for_all_scales, **params_for_all_buttons,
             height=self.cb_music.height, default=Window.music_volume() * 100,
-            command=lambda self=self: self.set_music_volume(self.scale_music.percent)
+            callback=lambda self=self: self.set_music_volume(self.scale_music.percent)
         )
         self.text_sound = Text("SFX:", self.options_font)
         self.cb_sound = CheckBox(
             self, 30, 30, TRANSPARENT, image=valid_img,
-            value=self.get_sound_state(), command=self.set_sound_state,
+            value=self.get_sound_state(), callback=self.set_sound_state,
             **params_for_all_buttons, **params_for_option_buttons
         )
         self.scale_sound = Scale(
             self, **params_for_all_scales, **params_for_all_buttons,
             height=self.cb_sound.height, default=Window.sound_volume() * 100,
-            command=lambda self=self: self.set_sound_volume(self.scale_sound.percent)
+            callback=lambda self=self: self.set_sound_volume(self.scale_sound.percent)
         )
         self.text_fps = Text("FPS:", self.options_font)
         self.cb_show_fps = CheckBox(
             self, 30, 30, TRANSPARENT, image=valid_img,
-            value=Window.fps_is_shown(), command=self.show_fps,
+            value=Window.fps_is_shown(), callback=self.show_fps,
             **params_for_all_buttons, **params_for_option_buttons
         )
         self.button_reset = Button(
-            self, "Reset Save", font=(FONT["algerian"], 30), command=SAVE.reset,
+            self, "Reset Save", font=(RESOURCES.FONT["algerian"], 30), callback=SAVE.reset,
             **params_for_all_buttons, **params_for_option_buttons, **params_for_reset_button
         )
 
         self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=self.button_back.on_click_sound))
         self.bind_joystick_button(0, "B", lambda event: self.stop(sound=self.button_back.on_click_sound))
+
+    def on_quit(self):
+        SAVE.dump()
 
     def update(self):
         self.hide_all(without=[self.frame, self.title, self.button_back])
@@ -92,10 +95,6 @@ class Options(Window):
             self.text_fps.show()
             self.cb_show_fps.show()
             self.button_reset.show()
-        self.save_update()
-
-    def save_update(self):
-        SAVE["fps"] = self.cb_show_fps.value
 
     def place_objects(self):
         self.frame.move(center=self.center)

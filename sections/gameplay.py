@@ -4,12 +4,11 @@ import random
 from typing import Dict, Union
 import pygame
 from my_pygame import Window, Drawable, RectangleShape, Text, Image, Button
-from my_pygame import DrawableListHorizontal, DrawableListVertical
+from my_pygame import DrawableList, DrawableListHorizontal, DrawableListVertical
 from my_pygame import ButtonListHorizontal, ButtonListVertical
 from my_pygame import Sprite, CountDown, Clock
 from my_pygame import GRAY, WHITE, BLACK, YELLOW, GREEN, GREEN_LIGHT, GREEN_DARK
-from constants import IMG, AUDIO, FONT, CAR_INFOS
-from my_pygame import load_image, load_image_list
+from constants import RESOURCES, ENVIRONMENT, CAR_INFOS
 from save import SAVE
 from .options import Options
 
@@ -54,7 +53,7 @@ class Car(Sprite):
 
 class PlayerCar(Car):
     def __init__(self, car_id: int):
-        Car.__init__(self, load_image_list(IMG["gameplay_cars"][car_id], height=55))
+        Car.__init__(self, RESOURCES.IMG["gameplay_cars"][car_id])
 
         self.__speed_up = False
         self.__speed_up_offset = 0
@@ -168,7 +167,7 @@ class Info(Text):
             msg = self.__title + "\n" + str(round(value, self.__round_n) if self.__round_n > 0 else round(value))
             if len(self.__extension) > 0:
                 msg += " " + self.__extension
-            self.txt = msg
+            self.message = msg
 
 class Pause(Window):
     def __init__(self, master):
@@ -179,21 +178,21 @@ class Pause(Window):
         self.master = master
         self.bg = RectangleShape(*self.size, (0, 0, 0, 170))
         params_for_all_buttons = {
-            "font": (FONT["algerian"], 100),
+            "font": (RESOURCES.FONT["algerian"], 100),
             "bg": GREEN,
             "hover_bg": GREEN_LIGHT,
             "active_bg": GREEN_DARK,
-            "hover_sound": AUDIO["select"],
-            "on_click_sound": AUDIO["validate"],
+            "hover_sound": RESOURCES.SFX["select"],
+            "on_click_sound": RESOURCES.SFX["validate"],
             "outline": 3,
             "highlight_color": YELLOW
         }
         self.menu_buttons = ButtonListVertical(offset=30)
-        self.menu_buttons.add_object(
-            Button(self, "Return", **params_for_all_buttons, command=self.stop),
-            Button(self, "Options", **params_for_all_buttons, command=self.show_options),
-            Button(self, "Garage", **params_for_all_buttons, command=self.return_to_garage),
-            Button(self, "Menu", **params_for_all_buttons, command=self.return_to_menu)
+        self.menu_buttons.add(
+            Button(self, "Return", **params_for_all_buttons, callback=self.stop),
+            Button(self, "Options", **params_for_all_buttons, callback=self.show_options),
+            Button(self, "Garage", **params_for_all_buttons, callback=self.return_to_garage),
+            Button(self, "Menu", **params_for_all_buttons, callback=self.return_to_menu)
         )
 
     def place_objects(self):
@@ -218,8 +217,8 @@ class EndGame(Window):
         Window.__init__(self, master=master, bg_music=master.bg_music)
         self.master = master
         self.bg = RectangleShape(*self.size, (0, 0, 0, 170))
-        self.text_score = Text(f"Your score\n{score}", (FONT["algerian"], 90), YELLOW, justify="center")
-        self.img_highscore = Image(IMG["new_high_score"], width=150)
+        self.text_score = Text(f"Your score\n{score}", (RESOURCES.FONT["algerian"], 90), YELLOW, justify="center")
+        self.img_highscore = Image(RESOURCES.IMG["new_high_score"], width=150)
         if score > SAVE["highscore"]:
             SAVE["highscore"] = score
         else:
@@ -232,40 +231,40 @@ class EndGame(Window):
         money_gained = money_distance + money_time_100 + money_time_opposite
         total = SAVE["money"] + money_gained
         SAVE["money"] = MAX_MONEY if total > MAX_MONEY else total
-        self.text_money = Text(format_number(SAVE["money"]), (FONT["algerian"], 50), YELLOW, img=Image(IMG["piece"], height=40), compound="right")
+        self.text_money = Text(format_number(SAVE["money"]), (RESOURCES.FONT["algerian"], 50), YELLOW, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
 
         font = ("calibri", 50)
         self.frame = RectangleShape(0.75 * self.width, 0.45 * self.height, BLACK, outline=1, outline_color=WHITE)
         self.text_distance = Text(f"Distance: {distance}", font, WHITE)
-        self.img_green_arrow_distance = Image(IMG["green_arrow"], height=40)
-        self.text_money_distance = Text(money_distance, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+        self.img_green_arrow_distance = Image(RESOURCES.IMG["green_arrow"], height=40)
+        self.text_money_distance = Text(money_distance, font, WHITE, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
         self.text_time_100 = Text(f"Time up to 100km: {time_100}", font, WHITE)
-        self.img_green_arrow_time_100 = Image(IMG["green_arrow"], height=40)
-        self.text_money_time_100 = Text(money_time_100, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+        self.img_green_arrow_time_100 = Image(RESOURCES.IMG["green_arrow"], height=40)
+        self.text_money_time_100 = Text(money_time_100, font, WHITE, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
         self.text_time_opposite = Text(f"Time in opposite side: {time_opposite}", font, WHITE)
-        self.img_green_arrow_time_opposite = Image(IMG["green_arrow"], height=40)
-        self.text_money_time_opposite = Text(money_time_opposite, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+        self.img_green_arrow_time_opposite = Image(RESOURCES.IMG["green_arrow"], height=40)
+        self.text_money_time_opposite = Text(money_time_opposite, font, WHITE, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
         self.total_money = DrawableListHorizontal(offset=10)
-        self.total_money.add_object(
+        self.total_money.add(
             Text("TOTAL: ", font, WHITE),
-            Text(money_gained, font, WHITE, img=Image(IMG["piece"], height=40), compound="right")
+            Text(money_gained, font, WHITE, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
         )
 
         params_for_all_buttons = {
-            "font": (FONT["algerian"], 50),
+            "font": (RESOURCES.FONT["algerian"], 50),
             "bg": GREEN,
             "hover_bg": GREEN_LIGHT,
             "active_bg": GREEN_DARK,
-            "hover_sound": AUDIO["select"],
-            "on_click_sound": AUDIO["validate"],
+            "hover_sound": RESOURCES.SFX["select"],
+            "on_click_sound": RESOURCES.SFX["validate"],
             "outline": 3,
             "highlight_color": YELLOW
         }
         self.menu_buttons = ButtonListHorizontal(offset=30)
-        self.menu_buttons.add_object(
-            Button(self, "Restart", **params_for_all_buttons, command=self.restart_game),
-            Button(self, "Garage", **params_for_all_buttons, command=self.return_to_garage),
-            Button(self, "Menu", **params_for_all_buttons, command=self.return_to_menu)
+        self.menu_buttons.add(
+            Button(self, "Restart", **params_for_all_buttons, callback=self.restart_game),
+            Button(self, "Garage", **params_for_all_buttons, callback=self.return_to_garage),
+            Button(self, "Menu", **params_for_all_buttons, callback=self.return_to_menu)
         )
 
     def place_objects(self):
@@ -291,7 +290,6 @@ class EndGame(Window):
 
     def restart_game(self):
         self.master.restart = True
-        self.master.stop()
         self.stop()
 
     def return_to_garage(self):
@@ -304,37 +302,35 @@ class EndGame(Window):
         self.stop()
 
 class Gameplay(Window):
-    def __init__(self, car_id: int, env: Dict[str, Union[str, tuple]]):
-        Window.__init__(self, bg_color=env["color"], bg_music=AUDIO["gameplay"])
+    def __init__(self, car_id: int, env: str):
+        Window.__init__(self, bg_color=ENVIRONMENT[env], bg_music=RESOURCES.MUSIC["gameplay"])
         self.bind_key(pygame.K_ESCAPE, lambda event: self.pause())
         self.bind_joystick_button(0, "START", lambda event: self.pause())
 
-        font = FONT["cooperblack"]
+        font = RESOURCES.FONT["cooperblack"]
 
         # Demaraction lines
         self.road = DrawableListVertical(bg_color=GRAY, offset=70)
         self.white_bands = list()
-        self.white_bands_pos = list()
         white_bands_width = 50 #px
         white_lines_height = 10 #px
         for i in range(5):
             if i % 2 == 0:
-                self.road.add_object(RectangleShape(self.width, white_lines_height, WHITE))
+                self.road.add(RectangleShape(self.width, white_lines_height, WHITE))
             else:
                 white_bands = DrawableListHorizontal(offset=20)
                 while white_bands.width < self.width:
-                    white_bands.add_object(RectangleShape(white_bands_width, white_lines_height, WHITE))
-                self.road.add_object(white_bands)
+                    white_bands.add(RectangleShape(white_bands_width, white_lines_height, WHITE))
+                self.road.add(white_bands)
                 self.white_bands.append(white_bands)
 
         # Environment
-        self.env_img = load_image(env["img"], height=110)
-        self.env_up = DrawableListHorizontal(offset=400)
-        self.env_down = DrawableListHorizontal(offset=400)
-        while self.env_up.width < self.width:
-            self.env_up.add_object(Drawable(self.env_img))
-        while self.env_down.width < self.width:
-            self.env_down.add_object(Drawable(self.env_img))
+        self.env_top = DrawableListHorizontal(offset=400)
+        self.env_bottom = DrawableListHorizontal(offset=400)
+        while self.env_top.width < self.width:
+            self.env_top.add(Image(RESOURCES.IMG[env], height=110))
+        while self.env_bottom.width < self.width:
+            self.env_bottom.add(Image(RESOURCES.IMG[env], height=110))
 
         #Infos
         params_for_infos = {
@@ -355,14 +351,14 @@ class Gameplay(Window):
         self.car = PlayerCar(car_id)
         self.speed = 0
         self.ways = tuple(list() for _ in range(4))
-        self.traffic = list()
+        self.traffic = DrawableList()
         self.sprites_traffic_cars = dict()
-        for side, car_list in IMG["traffic"].items():
+        for side, car_list in RESOURCES.IMG["traffic"].items():
             self.sprites_traffic_cars[side] = dict()
             for car_id, img_list in car_list.items():
-                self.sprites_traffic_cars[side][car_id] = load_image_list(img_list, height=55)
+                self.sprites_traffic_cars[side][car_id] = img_list
         self.clock_traffic = Clock()
-        self.img_crash = Image(IMG["crash"], size=150)
+        self.img_crash = Image(RESOURCES.IMG["crash"], size=150)
         self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow_x=5, shadow_y=5)
         self.last_car_way = 0
 
@@ -387,7 +383,7 @@ class Gameplay(Window):
         pause.mainloop()
         if self.loop and not self.count_down.is_shown():
             self.count_down.start(at_end=self.return_to_game)
-            self.set_object_priority(self.count_down, self.end_obj_list)
+            self.objects.set_priority(self.count_down, self.objects.end)
 
     def return_to_game(self):
         self.paused = False
@@ -419,8 +415,8 @@ class Gameplay(Window):
         self.infos_time_100.move(left=10, bottom=self.road.top - 10)
         self.infos_time_opposite.move(left=10, top=self.road.bottom + 10)
         self.car.move(centery=self.road.centery, left=50)
-        self.env_up.move(centerx=self.centerx, centery=(self.top + self.road[0].top) / 2)
-        self.env_down.move(centerx=self.centerx, centery=(self.road[-1].bottom + self.bottom) / 2)
+        self.env_top.move(centerx=self.centerx, centery=(self.top + self.road[0].top) / 2)
+        self.env_bottom.move(centerx=self.centerx, centery=(self.road[-1].bottom + self.bottom) / 2)
 
     def update(self):
         if self.paused:
@@ -431,7 +427,7 @@ class Gameplay(Window):
             self.update_background()
             self.update_traffic()
             self.rect_to_update = (
-                self.road.rect, self.env_up.rect, self.env_down.rect,
+                self.road.rect, self.env_top.rect, self.env_bottom.rect,
                 self.infos_score.rect, self.infos_speed.rect, self.infos_distance.rect,
                 self.infos_time_100.rect, self.infos_time_opposite.rect
             )
@@ -465,10 +461,10 @@ class Gameplay(Window):
                 if collision:
                     self.car.crash(car)
                     self.crashed_car = car
-                    self.play_sound(AUDIO["crash"])
+                    self.play_sound(RESOURCES.SFX["crash"])
                     self.img_crash.show()
                     self.img_crash.move(centerx=collision[0] + self.car.left, centery=collision[1] + self.car.top)
-                    self.set_object_priority(self.img_crash, self.end_obj_list)
+                    self.objects.set_priority(self.img_crash, self.objects.end)
         elif self.car.right <= 0 and self.crashed_car.right <= 0:
             self.end_game()
 
@@ -513,28 +509,22 @@ class Gameplay(Window):
         offset = self.speed * self.pixel_per_ms
         obj_to_delete = list()
         for white_bands_list in self.white_bands:
-            for band in white_bands_list:
-                band.move_ip(-offset, 0)
-            band = white_bands_list[0]
-            if band.right <= 0:
-                white_bands_list.remove_object(band, update_image=False, update_pos=False)
-                obj_to_delete.append(band)
-            band = white_bands_list[-1]
-            if band.right < self.right:
-                white_bands_list.add_object(RectangleShape(*band.size, WHITE), update_image=False, update_pos=False)
-        del obj_to_delete
-        for env in (self.env_up, self.env_down):
-            for img in env:
-                img.move_ip(-offset, 0)
+            white_bands_list.move_ip(-offset, 0)
+            if white_bands_list[0].right <= 0:
+                white_bands_list.remove_from_index(0)
+            if white_bands_list[-1].right < self.right:
+                white_bands_list.add(RectangleShape(*white_bands_list[-1].size, WHITE))
+        for env in (self.env_top, self.env_bottom):
+            env.move_ip(-offset, 0)
             img = env[0]
             if img.right <= 0:
-                env.remove_object(img, update_image=False, update_pos=False)
-                env.add_object(img, update_image=False, update_pos=False)
+                img.move(left=env[-1].right + env.offset)
+                env.set_priority(img, env.end)
         if self.img_crash.is_shown():
             self.img_crash.move_ip(-offset, 0)
 
     def update_traffic(self):
-        for car in self.traffic:
+        for car in self.traffic.drawable:
             car.update(self.speed, self.pixel_per_ms)
             if car.right < 0:
                 self.remove_car_from_traffic(car)
@@ -548,7 +538,7 @@ class Gameplay(Window):
                     elif (way in [3, 4]) and (car_1.speed > car_2.speed):
                         car_1.speed = car_2.speed
         ratio = (-(self.car.speed / 250) + 2.12) * 1000
-        if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio) and (len(self.traffic) == 0 or self.traffic[-1].right < self.right - 20):
+        if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio) and (self.traffic.empty() or self.traffic[-1].right < self.right - 20):
             self.add_car_to_traffic()
 
     def add_car_to_traffic(self):
@@ -562,17 +552,14 @@ class Gameplay(Window):
                 break
         for _ in range(nb_cars_to_add):
             car = TrafficCar(self.sprites_traffic_cars, random.randint(1, 4), random.choice(ways))
-            self.traffic.append(car)
-            self.add(car)
+            self.traffic.add(car)
             self.ways[car.way].append(car)
             car.move(left=self.right, centery=(self.road[car.way].bottom + self.road[car.way + 1].top) / 2)
             car.start_animation(loop=True)
             ways.remove(car.way)
-        del ways
 
     def remove_car_from_traffic(self, car: TrafficCar):
         self.traffic.remove(car)
-        self.remove(car)
         self.ways[car.way].remove(car)
 
     def end_game(self):
@@ -585,3 +572,8 @@ class Gameplay(Window):
         time_opposite = round(self.total_time_opposite, 1)
         window = EndGame(self, score, distance, time_100, time_opposite)
         window.mainloop()
+        if self.restart:
+            self.traffic.clear()
+            self.car.left = 50
+            self.car.restart()
+            self.init_game()

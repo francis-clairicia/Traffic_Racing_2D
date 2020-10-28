@@ -34,13 +34,8 @@ class Color(object):
     )
 
     def __init__(self, red, green, blue, alpha=255):
-        self.__red = 0
-        self.__green = 0
-        self.__blue = 0
-        self.__alpha = 0
-        self.__hue = 0
-        self.__saturation = 0
-        self.__value = 0
+        self.__red = self.__green = self.__blue = self.__alpha = 0
+        self.__hue = self.__saturation = self.__value = 0
         self.red = red
         self.green = green
         self.blue = blue
@@ -69,13 +64,13 @@ class Color(object):
         return cls(r, g, b, alpha)
 
     def __repr__(self):
-        return f"Color: red={self.red}, green={self.green}, blue={self.blue}, alpha={self.alpha}"
+        return f"<Color: red={self.red}, green={self.green}, blue={self.blue}, alpha={self.alpha}>"
 
     def __str__(self):
         return repr(self)
 
-    def get(self):
-        if self.alpha < 255:
+    def get(self, with_alpha=False):
+        if with_alpha:
             return (self.red, self.green, self.blue, self.alpha)
         return (self.red, self.green, self.blue)
 
@@ -173,8 +168,7 @@ class Color(object):
         self.__value = value
         self.__calculate_rgb_from_hsv()
 
-    @property
-    def hex(self):
+    def to_hex(self):
         value = "#"
         for color in (self.red, self.green, self.blue):
             value += "{0:0>2X}".format(color)
@@ -215,8 +209,7 @@ class Color(object):
         g = 0
         b = 0
         for interval, hue in hue_colors.items():
-            v_min, v_max = interval
-            if v_min <= h < v_max:
+            if h in range(*interval):
                 r, g, b = hue
                 break
         self.__red = round((r + m) * 255)

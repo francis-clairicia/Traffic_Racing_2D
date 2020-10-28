@@ -2,21 +2,19 @@
 
 import os
 import sys
-from typing import Callable, Any, Union
+import configparser
+from typing import Callable, Any, Union, Optional, Type
 import pygame
 from .abstract import Drawable, Focusable
 from .classes import Text, RectangleShape
+from .list import DrawableList
 from .joystick import Joystick
 from .keyboard import Keyboard
 from .clock import Clock
+from .path import set_constant_file
+from .resources import RESOURCES
 
-CONFIG_FILE = os.path.join(sys.path[0], "settings.conf")
-
-class MetaWindow(type):
-    def __call__(cls, *args, **kwargs):
-        window = type.__call__(cls, *args, **kwargs)
-        window.after_init()
-        return window
+CONFIG_FILE = set_constant_file("window.conf")
 
 class WindowCallback(object):
     def __init__(self, callback: Callable[..., Any], wait_time: float):
@@ -30,11 +28,11 @@ class WindowCallback(object):
     def __call__(self):
         return self.callback()
 
-class Window(metaclass=MetaWindow):
+class Window:
 
     __all_opened = list()
-    __sound_volume = 0.5
-    __music_volume = 0.5
+    __sound_volume = 0
+    __music_volume = 0
     __enable_music = True
     __enable_sound = True
     actual_music = None
@@ -51,9 +49,7 @@ class Window(metaclass=MetaWindow):
         self.rect = self.window.get_rect()
         self.main_clock = pygame.time.Clock()
         self.loop = False
-        self.objects = list()
-        self.focusable_objects = list()
-        self.focusable_objects_idx = -1
+        self.objects = DrawableList()
         self.event_handler_dict = dict()
         self.key_handler_dict = dict()
         self.key_state_dict = dict()
@@ -108,71 +104,14 @@ class Window(metaclass=MetaWindow):
             if status[1] > 0:
                 print("Error on pygame initialization ({} modules failed to load)".format(status[1]), file=sys.stderr)
                 sys.exit(84)
-            Window.load_sound_volume_from_save()
+            Window.load_config()
         if pygame.display.get_surface() is None:
             if size[0] <= 0 or size[1] <= 0:
                 video_info = pygame.display.Info()
                 size = video_info.current_w, video_info.current_h
             pygame.display.set_mode(tuple(size), flags)
-
-    # @classmethod
-    # def withLoading(cls, text="Loading...", font=("calibri", 300), bg=(0, 0, 0), fg=(255, 255, 255),
-    #                 opening=True, ending=True, side_opening="left", side_ending="right", speed=50,
-    #                 *args, **kwargs):
-    #     Window.init_pygame(kwargs.get("size", (0, 0)), kwargs.get("flags", 0))
-    #     kwargs.pop("size", None)
-    #     kwargs.pop("flags", None)
-    #     window = pygame.display.get_surface()
-    #     window_rect = window.get_rect()
-    #     rectangle = RectangleShape(*window_rect.size, color=bg)
-    #     Text(text, font, fg, center=rectangle.center).draw(rectangle)
-    #     animation_init_opening = {
-    #         "left": {"right": window_rect.left - 1, "centery": window_rect.centery},
-    #         "right": {"left": window_rect.right + 1, "centery": window_rect.centery},
-    #         "top": {"bottom": window_rect.top - 1, "centerx": window_rect.centerx},
-    #         "bottom": {"top": window_rect.bottom + 1, "centerx": window_rect.centerx}
-    #     }
-    #     animation_opening = {
-    #         "left": (speed, 0),
-    #         "right": (-speed, 0),
-    #         "top": (0, speed),
-    #         "bottom": (0, -speed)
-    #     }
-    #     animation_ending = {
-    #         "left": (-speed, 0),
-    #         "right": (speed, 0),
-    #         "top": (0, -speed),
-    #         "bottom": (0, speed)
-    #     }
-    #     rectangle.move(**animation_init_opening[side_opening])
-    #     window_to_hide = window.copy()
-    #     clock = Clock()
-    #     while True:
-    #         if clock.elapsed_time(10):
-    #             rectangle.move_ip(*animation_opening[side_opening])
-    #             if (side_opening == "left" and rectangle.left > window_rect.left) \
-    #             or (side_opening == "right" and rectangle.right < window_rect.right) \
-    #             or (side_opening == "top" and rectangle.top > window_rect.top) \
-    #             or (side_opening == "bottom" and rectangle.bottom < window_rect.bottom) \
-    #             or (not opening):
-    #                 rectangle.move(x=0, y=0)
-    #                 opening = False
-    #             window.blit(window_to_hide, window_rect)
-    #             rectangle.draw(window)
-    #             pygame.display.flip()
-    #             if not opening:
-    #                 break
-    #     new_window = cls(*args, **kwargs)
-    #     while True:
-    #         if clock.elapsed_time(10):
-    #             rectangle.move_ip(*animation_ending[side_ending])
-    #             ending = bool(window_rect.colliderect(rectangle.rect))
-    #             new_window.draw_screen(show_fps=False)
-    #             rectangle.draw(window)
-    #             pygame.display.flip()
-    #             if not ending:
-    #                 break
-    #     return new_window
+            RESOURCES.load()
+            RESOURCES.set_sfx_volume(Window.__sound_volume, Window.__enable_sound)
 
     @property
     def main_window(self) -> bool:
@@ -187,75 +126,17 @@ class Window(metaclass=MetaWindow):
             del Window.joystick[-1]
 
     def __setattr__(self, name, obj):
-        if issubclass(type(obj), Drawable):
-            if hasattr(self, name):
-                delattr(self, name)
-            self.add(obj)
+        if isinstance(obj, (Drawable, DrawableList)) and name != "objects":
+            self.objects.add(obj)
         return object.__setattr__(self, name, obj)
 
     def __delattr__(self, name):
-        obj = getattr(self, name)
-        if issubclass(type(obj), Drawable):
-            self.remove(obj)
+        if isinstance(obj, (Drawable, DrawableList)) and name != "objects":
+            self.objects.remove(obj)
         return object.__delattr__(self, name)
 
     def __contains__(self, obj):
         return bool(obj in self.objects)
-
-    def add(self, obj):
-        if obj not in self.objects:
-            self.objects.append(obj)
-
-    def remove(self, obj):
-        if obj in self.objects:
-            self.objects.remove(obj)
-        self.focus_remove(obj)
-
-    def focus_add(self, obj):
-        if issubclass(type(obj), Focusable):
-            self.focusable_objects.append(obj)
-
-    def focus_remove(self, obj):
-        if obj in self.focusable_objects:
-            self.focusable_objects.remove(obj)
-            if self.focusable_objects_idx >= len(self.focusable_objects):
-                self.focusable_objects_idx = len(self.focusable_objects) - 1
-
-    @property
-    def end_obj_list(self):
-        return len(self.objects)
-
-    def set_object_priority(self, obj, new_pos, relative_to=None):
-        former_pos = self.objects.index(obj)
-        del self.objects[former_pos]
-        if relative_to:
-            new_pos += self.objects.index(relative_to)
-        self.objects.insert(new_pos, obj)
-
-    def set_focus(self, obj: Focusable) -> None:
-        if self.focusable_objects_idx >= 0:
-            self.focusable_objects[self.focusable_objects_idx].focus_leave()
-        try:
-            if obj is None:
-                raise ValueError
-            self.focusable_objects_idx = self.focusable_objects.index(obj)
-            obj.focus_set(from_master=True)
-        except ValueError:
-            self.focusable_objects_idx = -1
-        for obj_f in self.focusable_objects:
-            if obj_f != obj and obj_f.has_focus():
-                obj_f.focus_leave()
-
-    def focus_next(self) -> Union[Focusable, None]:
-        if all(not obj.is_shown() or not obj.take_focus() for obj in self.focusable_objects):
-            return None
-        i = 0
-        while True:
-            i += 1
-            obj = self.focusable_objects[(self.focusable_objects_idx + i) % len(self.focusable_objects)]
-            if obj.is_shown() and obj.take_focus():
-                break
-        return obj
 
     def enable_key_joy_focus(self):
         self.__key_enabled = True
@@ -272,11 +153,22 @@ class Window(metaclass=MetaWindow):
     def set_title(title: str):
         pygame.display.set_caption(title)
 
+    @property
+    def bg_music(self):
+        return self.__bg_music
+
+    @bg_music.setter
+    def bg_music(self, music):
+        if music is None or os.path.isfile(music):
+            self.__bg_music = music
+
     def mainloop(self):
         self.loop = True
         Window.__all_opened.append(self)
-        if Focusable.MODE != Focusable.MODE_MOUSE and self.focusable_objects_idx < 0:
-            self.set_focus(self.focus_next())
+        self.place_objects()
+        self.set_grid()
+        if Focusable.MODE != Focusable.MODE_MOUSE and self.objects.focus_get() is None:
+            self.objects.focus_next()
         while self.loop:
             for callback in [c for c in self.callback_after if c.can_call()]:
                 callback()
@@ -286,12 +178,9 @@ class Window(metaclass=MetaWindow):
             self.keyboard.update()
             for joystick in self.joystick:
                 joystick.update()
-            for obj in self.focusable_objects:
-                obj.focus_update()
             self.draw_and_refresh()
             self.event_handler()
-            self.update_sound_volume()
-            self.check_sound_status()
+            self.handle_bg_music()
 
     def stop(self, force=False, sound=None):
         self.loop = False
@@ -299,7 +188,7 @@ class Window(metaclass=MetaWindow):
         if sound:
             self.play_sound(sound)
         if self.main_window or force is True:
-            Window.save_sound_volume()
+            Window.save_config()
             pygame.quit()
             sys.exit(0)
         Window.__all_opened.remove(self)
@@ -321,10 +210,7 @@ class Window(metaclass=MetaWindow):
             self.window.fill(self.bg_color)
         if isinstance(self.__master, Window):
             self.__master.draw_screen(show_fps=False)
-        for obj in self.objects:
-            obj.draw(self.window)
-            if issubclass(type(obj), Focusable):
-                obj.after_drawing(self.window)
+        self.objects.draw(self.window)
         if Window.__show_fps is True and show_fps:
             Window.__fps_obj.draw(self.window)
         if self.__screenshot:
@@ -335,8 +221,11 @@ class Window(metaclass=MetaWindow):
         Window.__fps = int(framerate)
 
     @staticmethod
-    def show_fps(status: bool, **kwargs):
+    def show_fps(status: bool):
         Window.__show_fps = bool(status)
+
+    @staticmethod
+    def config_fps_obj(**kwargs):
         Window.__fps_obj.config(**kwargs)
 
     @staticmethod
@@ -349,7 +238,8 @@ class Window(metaclass=MetaWindow):
 
     def fps_update(self):
         self.main_clock.tick(Window.__fps)
-        Window.__fps_obj.txt = f"{round(self.main_clock.get_fps())} FPS"
+        if Window.__show_fps:
+            Window.__fps_obj.message = f"{round(self.main_clock.get_fps())} FPS"
 
     def show_all(self, without=tuple()):
         for obj in self.objects:
@@ -394,11 +284,13 @@ class Window(metaclass=MetaWindow):
             for callback in self.event_handler_dict.get(event.type, tuple()):
                 callback(event)
 
+    def set_focus(self, obj: Drawable) -> None:
+        self.objects.set_focus(obj)
+
     def handle_focus(self, event: pygame.event.Event) -> None:
         if event.type in [pygame.KEYDOWN, pygame.JOYHATMOTION]:
             Focusable.MODE = Focusable.MODE_KEY if event.type == pygame.KEYDOWN else Focusable.MODE_JOY
-            if self.__key_enabled and any(obj.is_shown() for obj in self.focusable_objects):
-                obj = None
+            if self.__key_enabled:
                 side_with_key_event = {
                     pygame.K_LEFT: Focusable.ON_LEFT,
                     pygame.K_RIGHT: Focusable.ON_RIGHT,
@@ -412,7 +304,7 @@ class Window(metaclass=MetaWindow):
                     (0, -1): Focusable.ON_BOTTOM,
                 }
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-                    obj = self.focus_next()
+                    self.objects.focus_next()
                 else:
                     key_events = [
                         (pygame.KEYDOWN, "key", side_with_key_event),
@@ -423,15 +315,7 @@ class Window(metaclass=MetaWindow):
                             continue
                         value = getattr(event, attr)
                         if value in side_dict:
-                            if self.focusable_objects_idx < 0:
-                                obj = self.focusable_objects[0]
-                            else:
-                                obj = self.focusable_objects[self.focusable_objects_idx].get_obj_on_side(side_dict[value])
-                            break
-                    while obj and (not obj.is_shown() or not obj.take_focus()):
-                        obj = obj.get_obj_on_side(side_dict[value])
-                if obj:
-                    self.set_focus(obj)
+                            self.objects.focus_obj_on_side(side_dict[value])
         else:
             Focusable.MODE = Focusable.MODE_MOUSE
 
@@ -444,8 +328,18 @@ class Window(metaclass=MetaWindow):
             event_list = self.event_handler_dict[event_type] = list()
         event_list.append(callback)
 
+    def unbind_event(self, event_type, callback):
+        if event_type in self.event_handler_dict and callback in self.event_handler_dict[event_type]:
+            self.event_handler_dict[event_type].remove(callback)
+            if not self.event_handler_dict[event_type]:
+                self.event_handler_dict.pop(event_type)
+
     def bind_mouse(self, callback):
         self.mouse_handler_list.append(callback)
+
+    def unbind_mouse(self, callback):
+        if callback in self.mouse_handler_list:
+            self.mouse_handler_list.remove(callback)
 
     def bind_key(self, key_value, callback, hold=False):
         if not hold:
@@ -456,6 +350,16 @@ class Window(metaclass=MetaWindow):
         if key_list is None:
             key_list = key_dict[key_value] = list()
         key_list.append(callback)
+
+    def unbind_key(self, key_value, callback):
+        if key_value in self.key_handler_dict and callback in self.key_handler_dict[key_value]:
+            self.key_handler_dict[key_value].remove(callback)
+            if not self.key_handler_dict[key_value]:
+                self.key_handler_dict.pop(key_value)
+        elif key_value in self.key_state_dict and callback in self.key_state_dict[key_value]:
+            self.key_state_dict[key_value].remove(callback)
+            if not self.key_state_dict[key_value]:
+                self.key_state_dict.pop(key_value)
 
     def bind_joystick_button(self, joy_id, button_id, callback):
         joystick_dict = self.joystick_handler_dict.get(joy_id)
@@ -481,16 +385,11 @@ class Window(metaclass=MetaWindow):
     def __hide_screenshot_frame(self):
         self.__screenshot = False
 
-    def check_sound_status(self):
+    def handle_bg_music(self):
         if not Window.__enable_music or (self.bg_music is None and pygame.mixer.get_busy()):
             self.stop_music()
         elif Window.__enable_music and self.bg_music and (not pygame.mixer.music.get_busy() or Window.actual_music is None or Window.actual_music != self.bg_music):
             self.play_music(self.bg_music)
-
-    def update_sound_volume(self):
-        for obj in self.objects:
-            for sound in obj.sounds:
-                sound.set_volume(Window.__sound_volume if Window.__enable_sound else 0)
 
     @staticmethod
     def stop_music():
@@ -508,10 +407,8 @@ class Window(metaclass=MetaWindow):
             Window.actual_music = filepath
 
     @staticmethod
-    def play_sound(filepath: str):
-        if Window.__enable_sound:
-            sound = pygame.mixer.Sound(filepath)
-            sound.set_volume(Window.__sound_volume)
+    def play_sound(sound: pygame.mixer.Sound):
+        if Window.__enable_sound and isinstance(sound, pygame.mixer.Sound):
             sound.play()
 
     @staticmethod
@@ -524,11 +421,7 @@ class Window(metaclass=MetaWindow):
 
     @staticmethod
     def set_sound_volume(value: float):
-        Window.__sound_volume = value
-        if Window.__sound_volume > 1:
-            Window.__sound_volume = 1
-        elif Window.__sound_volume < 0:
-            Window.__sound_volume = 0
+        Window.__sound_volume = RESOURCES.set_sfx_volume(value, Window.__enable_sound)
 
     @staticmethod
     def set_music_volume(value: float):
@@ -546,6 +439,7 @@ class Window(metaclass=MetaWindow):
     @staticmethod
     def set_sound_state(state: bool):
         Window.__enable_sound = bool(state)
+        RESOURCES.set_sfx_volume(Window.__sound_volume, Window.__enable_sound)
 
     @staticmethod
     def get_music_state() -> bool:
@@ -556,39 +450,73 @@ class Window(metaclass=MetaWindow):
         return Window.__enable_sound
 
     @staticmethod
-    def load_sound_volume_from_save():
-        pygame.mixer.music.set_volume(Window.__music_volume)
-        if not os.path.isfile(CONFIG_FILE):
-            return
-        with open(CONFIG_FILE, "r") as file:
-            config = file.read()
-        for line in config.splitlines():
-            try:
-                key, value = line.split("=")
-                if key == "music":
-                    Window.set_music_volume(float(value) / 100)
-                if key == "sound":
-                    Window.set_sound_volume(float(value) / 100)
-                if key == "enable_music":
-                    Window.set_music_state(int(value))
-                if key == "enable_sound":
-                    Window.set_sound_state(int(value))
-            except ValueError:
-                continue
+    def load_config():
+        config = configparser.ConfigParser()
+        config.read(CONFIG_FILE)
+        params = {
+            "MUSIC": {
+                "volume": {
+                    "callback": Window.set_music_volume,
+                    "get": config.getfloat,
+                    "default": 50,
+                    "transform": lambda x: x / 100
+                },
+                "enable": {
+                    "callback": Window.set_music_state,
+                    "get": config.getboolean,
+                    "default": True
+                }
+            },
+            "SFX": {
+                "volume": {
+                    "callback": Window.set_sound_volume,
+                    "get": config.getfloat,
+                    "default": 50,
+                    "transform": lambda x: x / 100
+                },
+                "enable": {
+                    "callback": Window.set_sound_state,
+                    "get": config.getboolean,
+                    "default": True
+                }
+            },
+            "FPS": {
+                "show": {
+                    "callback": Window.show_fps,
+                    "get": config.getboolean,
+                    "default": False
+                }
+            },
+        }
+        for section, option_dict in params.items():
+            for option, setup in option_dict.items():
+                callback = setup["callback"]
+                get_value = setup["get"]
+                get_value_params = dict()
+                if "default" in setup:
+                    get_value_params["fallback"] = setup["default"]
+                transform = setup.get("transform", lambda value: value)
+                callback(transform(get_value(section, option, **get_value_params)))
 
     @staticmethod
-    def save_sound_volume():
-        variables = {
-            "music": round(Window.__music_volume * 100),
-            "sound": round(Window.__sound_volume * 100),
-            "enable_music": 1 if Window.get_music_state() else 0,
-            "enable_sound": 1 if Window.get_sound_state() else 0,
+    def save_config():
+        config_dict = {
+            "MUSIC": {
+                "volume": round(Window.__music_volume * 100),
+                "enable": Window.get_music_state()
+            },
+            "SFX": {
+                "volume": round(Window.__sound_volume * 100),
+                "enable": Window.get_sound_state()
+            },
+            "FPS": {
+                "show": Window.fps_is_shown()
+            }
         }
-        config = str()
-        for key, value in variables.items():
-            config += f"{key}={value}\n"
+        config = configparser.ConfigParser()
+        config.read_dict(config_dict)
         with open(CONFIG_FILE, "w") as file:
-            file.write(config)
+            config.write(file, space_around_delimiters=False)
 
     left = property(lambda self: self.rect.left)
     right = property(lambda self: self.rect.right)

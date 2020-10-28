@@ -7,52 +7,20 @@ from pygame.sprite import Sprite, Group
 
 class Drawable(Sprite):
 
-    __slots__ = (
-        "__surface",
-        "__rect",
-        "__mask",
-        "__x",
-        "__y",
-        "__rotate",
-        "__sounds",
-        "__sub_drawables",
-        "__former_movs",
-        "__draw_sprite",
-        "__valid_size",
-    )
-
-    def __init__(self, surface: Optional[pygame.Surface] = pygame.Surface((0, 0), flags=pygame.SRCALPHA),
-                 rotate: Optional[int] = 0, groups: Optional[Union[List[Group], Tuple[Group, ...]]] = tuple(), **kwargs):
-        Sprite.__init__(self, *groups)
-        self.__surface = self.__rect = self.__mask = None
-        self.__x = self.__y = self.__rotate = 0
-        self.__sounds = list()
-        self.__sub_drawables = list()
+    def __init__(self, surface: Optional[pygame.Surface] = pygame.Surface((0, 0), flags=pygame.SRCALPHA), **kwargs):
+        Sprite.__init__(self)
+        self.__surface = self.__mask = None
+        self.__rect = pygame.Rect(0, 0, 0, 0)
+        self.__x = self.__y = 0
         self.__former_moves = dict()
         self.__draw_sprite = True
         self.__valid_size = True
         self.image = surface
-        self.rotate = rotate
         self.move(**kwargs)
 
-    def __setattr__(self, name: str, value: Any):
-        if isinstance(value, pygame.mixer.Sound):
-            if hasattr(self, name):
-                s = getattr(self, name)
-                if s in self.__sounds:
-                    self.__sounds.remove(s)
-            self.__sounds.append(value)
-        elif issubclass(type(value), Drawable):
-            self.__sub_drawables.append(value)
-        return object.__setattr__(self, name, value)
-
-    def __delattr__(self, name: str):
-        obj = getattr(self, name)
-        if obj in self.__sub_drawables:
-            self.__sub_drawables.remove(obj)
-        elif obj in self.__sounds:
-            self.__sounds.remove(obj)
-        return object.__delattr__(self, name)
+    @classmethod
+    def from_size(cls, size: Tuple[int, int], **kwargs):
+        return cls(pygame.Surface(size, flags=pygame.SRCALPHA), **kwargs)
 
     def __getitem__(self, name: str):
         return getattr(self.rect, name)
@@ -62,6 +30,12 @@ class Drawable(Sprite):
 
     def fill(self, color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]) -> None:
         self.image.fill(color)
+        self.__mask = pygame.mask.from_surface(self.__surface)
+
+    def blit(self, source, dest, area=None, special_flags=0) -> pygame.Rect:
+        rect = self.image.blit(source, dest, area=area, special_flags=special_flags)
+        self.__mask = pygame.mask.from_surface(self.image)
+        return rect
 
     def show(self) -> None:
         self.set_visibility(True)
@@ -81,9 +55,10 @@ class Drawable(Sprite):
 
     @image.setter
     def image(self, surface: pygame.Surface) -> None:
+        if not isinstance(surface, pygame.Surface):
+            surface = pygame.Surface((0, 0), flags=pygame.SRCALPHA)
         self.__surface = surface
-        self.__rect = self.__surface.get_rect()
-        self.move(**self.__former_moves)
+        self.__rect = self.__surface.get_rect(**self.__former_moves)
         self.__mask = pygame.mask.from_surface(self.__surface)
 
     @property
@@ -94,25 +69,27 @@ class Drawable(Sprite):
     def mask(self):
         return self.__mask
 
-    @property
-    def sounds(self) -> Tuple[pygame.mixer.Sound, ...]:
-        sounds = self.__sounds.copy()
-        for obj in self.__sub_drawables:
-            sounds.extend(obj.sounds)
-        return tuple(sounds)
-
     def draw(self, surface: pygame.Surface) -> None:
         if self.is_shown():
+            self.before_drawing(surface)
             surface.blit(self.image, self.rect)
+            self.after_drawing(surface)
+            self.focus_drawing(surface)
 
-    def blit(self, source, dest, area=None, special_flags=0) -> pygame.Rect:
-        return self.image.blit(source, dest, area=area, special_flags=special_flags)
+    def before_drawing(self, surface: pygame.Surface) -> None:
+        pass
+
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        pass
+
+    def focus_drawing(self, surface: pygame.Surface) -> None:
+        pass
 
     def move(self, **kwargs) -> None:
         if len(kwargs) == 0:
             return
-        x = self.__rect.x if isinstance(self.__rect, pygame.Rect) else 0
-        y = self.__rect.y if isinstance(self.__rect, pygame.Rect) else 0
+        x = self.__rect.x
+        y = self.__rect.y
         common = ("center", "topleft", "topright", "bottomleft", "bottomright", "midtop", "midbottom", "midleft", "midright")
         if not any(key in kwargs for key in ("x", "left", "right", "centerx", *common)):
             kwargs["x"] = x
@@ -121,25 +98,19 @@ class Drawable(Sprite):
         self.__rect = self.image.get_rect(**kwargs)
         self.__x = self.__rect.x
         self.__y = self.__rect.y
-        self.__former_moves = kwargs.copy()
+        self.__former_moves = kwargs
 
     def move_ip(self, x: float, y: float) -> None:
         self.__x += x
         self.__y += y
         self.__rect = self.__surface.get_rect(x=self.__x, y=self.__y)
-        self.__former_moves = {"x": self.__rect.x, "y": self.__rect.y}
+        self.__former_moves = {"x": self.__x, "y": self.__y}
 
-    @property
-    def rotate(self):
-        return self.__rotate
-
-    @rotate.setter
     def rotate(self, angle: int) -> None:
         while not 0 <= angle < 360:
             angle += 360 if angle < 0 else -360
         if angle != 0:
             self.image = pygame.transform.rotozoom(self.image, angle, 1)
-            self.__rotate += angle
 
     def set_size(self, *args, smooth=True) -> None:
         size = args if len(args) == 2 else args[0]
@@ -199,19 +170,39 @@ class Focusable:
 
     def __init__(self, master, highlight_color=(0, 0, 255), highlight_thickness=2):
         self.__focus = False
-        self.__master = master
         self.__side = dict.fromkeys((Focusable.ON_LEFT, Focusable.ON_RIGHT, Focusable.ON_TOP, Focusable.ON_BOTTOM))
         self.__take_focus = True
-        master.focus_add(self)
+        self.__from_master = False
+        self.__master = master
         self.highlight_color = highlight_color
         self.highlight_thickness = highlight_thickness
+
+    @property
+    def master(self):
+        return self.__master
+
+    @property
+    def focus(self) -> bool:
+        return self.__focus
+
+    @focus.setter
+    def focus(self, status: bool) -> None:
+        status = bool(status)
+        focus = self.__focus
+        self.__focus = status
+        if status is True:
+            if not focus:
+                self.on_focus_set()
+        else:
+            if focus:
+                self.on_focus_leave()
 
     def get_obj_on_side(self, side: str):
         return self.__side.get(side, None)
 
     def set_obj_on_side(self, on_top=None, on_bottom=None, on_left=None, on_right=None) -> None:
         for side, obj in ((Focusable.ON_TOP, on_top), (Focusable.ON_BOTTOM, on_bottom), (Focusable.ON_LEFT, on_left), (Focusable.ON_RIGHT, on_right)):
-            if side in self.__side and issubclass(type(obj), Focusable):
+            if side in self.__side and isinstance(obj, Focusable):
                 self.__side[side] = obj
 
     def remove_obj_on_side(self, *sides: str):
@@ -219,8 +210,8 @@ class Focusable:
             if side in self.__side:
                 self.__side[side] = None
 
-    def after_drawing(self, surface: pygame.Surface):
-        if not self.has_focus() or (hasattr(self, "is_shown") and getattr(self, "is_shown")() is False):
+    def focus_drawing(self, surface: pygame.Surface):
+        if not self.has_focus():
             return
         if hasattr(self, "rect"):
             outline = getattr(self, "outline") if hasattr(self, "outline") else self.highlight_thickness
@@ -233,27 +224,20 @@ class Focusable:
         return self.__focus
 
     def take_focus(self, status=None) -> bool:
-        if status:
+        if status is not None:
             self.__take_focus = bool(status)
-        return self.__take_focus
+        shown = True
+        if hasattr(self, "is_shown") and callable(self.is_shown) and not self.is_shown():
+            shown = False
+        return bool(self.__take_focus and shown)
 
-    def focus_set(self, from_master=False) -> None:
-        if hasattr(self, "is_shown") and getattr(self, "is_shown")() is False:
-            self.__focus = False
-        elif not self.has_focus():
-            if not from_master and self.take_focus():
-                self.__master.set_focus(self)
-            self.__focus = True
-            if self.take_focus():
-                self.on_focus_set()
+    def focus_set(self) -> None:
+        if not self.has_focus():
+            self.master.set_focus(self)
 
-    def focus_leave(self, remove_from_master=False) -> None:
+    def focus_leave(self) -> None:
         if self.has_focus():
-            self.__focus = False
-            if remove_from_master:
-                self.__master.set_focus(None)
-            if hasattr(self, "is_shown") and getattr(self, "is_shown")() is True and self.take_focus():
-                self.on_focus_leave()
+            self.master.set_focus(None)
 
     def focus_update(self):
         pass
@@ -275,9 +259,9 @@ class Clickable(Focusable):
         self.__callback = None
         self.__hover = False
         self.__active = False
-        self.__hover_sound = None if hover_sound is None else pygame.mixer.Sound(hover_sound)
-        self.__on_click_sound = None if on_click_sound is None else pygame.mixer.Sound(on_click_sound)
-        self.__disabled_sound = None if disabled_sound is None else pygame.mixer.Sound(disabled_sound)
+        self.__hover_sound = hover_sound
+        self.__on_click_sound = on_click_sound
+        self.__disabled_sound = disabled_sound
         self.__enable_mouse = True
         self.__enable_key = True
         self.__state = Clickable.NORMAL
@@ -431,7 +415,7 @@ class Clickable(Focusable):
             if self.hover:
                 self.focus_set()
             else:
-                self.focus_leave(remove_from_master=True)
+                self.focus_leave()
 
     def on_change_state(self) -> None:
         pass

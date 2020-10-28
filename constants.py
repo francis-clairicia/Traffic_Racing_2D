@@ -1,6 +1,6 @@
 # -*- coding: Utf-8 -*
 
-from my_pygame import set_constant_directory, set_constant_file
+from my_pygame import set_constant_directory, set_constant_file, RESOURCES
 
 #Dossiers
 IMG_FOLDER = set_constant_directory("files", "img")
@@ -10,7 +10,8 @@ FONT_FOLDER = set_constant_directory("files", "fonts")
 #Icone
 ICON = set_constant_file(IMG_FOLDER, "icone.ico")
 
-IMG = {
+########## Images ##########
+RESOURCES.IMG = {
     ########## Logo/Image de fond du jeu ##########
     "logo": set_constant_file(IMG_FOLDER, "logo.png"),
     "background": set_constant_file(IMG_FOLDER, "wallpaper.jpg"),
@@ -27,21 +28,53 @@ IMG = {
     "piece": set_constant_file(IMG_FOLDER, "piece.png"),
     "padlock": set_constant_file(IMG_FOLDER, "cadenas.png"),
     "crash": set_constant_file(IMG_FOLDER, "explosion.png"),
-    "new_high_score": set_constant_file(IMG_FOLDER, "high_score.png")
+    "new_high_score": set_constant_file(IMG_FOLDER, "high_score.png"),
+    ########## Environnement ##########
+    "suburb": set_constant_file(IMG_FOLDER, "arbre.png"),
+    "desert": set_constant_file(IMG_FOLDER, "cactus.png"),
+    "autumn": set_constant_file(IMG_FOLDER, "arbre_automne.png"),
+    "snow": set_constant_file(IMG_FOLDER, "sapin.png")
 }
+########## Image des voitures ##########
+#--- Voitures utilisables
+RESOURCES.IMG["garage_cars"] = dict()
+RESOURCES.IMG["gameplay_cars"] = dict()
+nb_player_cars = 9
+for i in range(nb_player_cars):
+    i += 1
+    RESOURCES.IMG["garage_cars"][i] = set_constant_file(IMG_FOLDER, "garage", f"voiture_{i}.png")
+    RESOURCES.IMG["gameplay_cars"][i] = list()
+    for n in range(10):
+        try:
+            image = set_constant_file(IMG_FOLDER, "gameplay", f"voiture_{i}", f"{n+1}.png")
+        except FileNotFoundError:
+            continue
+        else:
+            RESOURCES.IMG["gameplay_cars"][i].append(image)
+#--- Voitures obstacles
+RESOURCES.IMG["traffic"] = {"normal":{}, "opposé":{}}
+nb_traffic_car = 4
+for i in range(nb_traffic_car):
+    i += 1
+    for sens in ("normal", "opposé"):
+        RESOURCES.IMG["traffic"][sens][i] = [
+            set_constant_file(IMG_FOLDER, "gameplay", "traffic", f"cars_{i}_{sens}.png"),
+            set_constant_file(IMG_FOLDER, "gameplay", "traffic", f"cars_{i}_{sens}-2.png")
+        ]
 
-FONT = {
+########## Polices d'écritures ##########
+RESOURCES.FONT = {
     "algerian": set_constant_file(FONT_FOLDER, "Algerian Regular.ttf"),
     "cooperblack": set_constant_file(FONT_FOLDER, "COOPBL.ttf")
 }
 
 ########## Musiques/Sons ##########
-AUDIO = {
-    # Musiques
+RESOURCES.MUSIC = {
     "menu": set_constant_file(AUDIO_FOLDER, "menu.wav"),
     "garage": set_constant_file(AUDIO_FOLDER, "garage.wav"),
-    "gameplay": set_constant_file(AUDIO_FOLDER, "gameplay.wav"),
-    # SFX
+    "gameplay": set_constant_file(AUDIO_FOLDER, "gameplay.wav")
+}
+RESOURCES.SFX = {
     "back": set_constant_file(AUDIO_FOLDER, "sfx-menu-back.wav"),
     "select": set_constant_file(AUDIO_FOLDER, "sfx-menu-select.wav"),
     "validate": set_constant_file(AUDIO_FOLDER, "sfx-menu-validate.wav"),
@@ -49,39 +82,12 @@ AUDIO = {
     "crash": set_constant_file(AUDIO_FOLDER, "sfx-crash.wav")
 }
 
-########## Image des voitures ##########
-#--- Voitures utilisables
-IMG["garage_cars"] = dict()
-IMG["gameplay_cars"] = dict()
-nb_player_cars = 9
-for i in range(nb_player_cars):
-    i += 1
-    IMG["garage_cars"][i] = set_constant_file(IMG_FOLDER, "garage", f"voiture_{i}.png")
-    IMG["gameplay_cars"][i] = list()
-    for n in range(10):
-        try:
-            image = set_constant_file(IMG_FOLDER, "gameplay", f"voiture_{i}", f"{n+1}.png")
-        except FileNotFoundError:
-            continue
-        else:
-            IMG["gameplay_cars"][i].append(image)
-#--- Voitures obstacles
-IMG["traffic"] = {"normal":{}, "opposé":{}}
-nb_traffic_car = 4
-for i in range(nb_traffic_car):
-    i += 1
-    for sens in ("normal", "opposé"):
-        IMG["traffic"][sens][i] = (
-            set_constant_file(IMG_FOLDER, "gameplay", "traffic", f"cars_{i}_{sens}.png"),
-            set_constant_file(IMG_FOLDER, "gameplay", "traffic", f"cars_{i}_{sens}-2.png")
-        )
-
 ########## Environnements ##########
 ENVIRONMENT = {
-    "suburb": {"img": set_constant_file(IMG_FOLDER, "arbre.png"), "color": (140, 255, 140)},
-    "desert": {"img": set_constant_file(IMG_FOLDER, "cactus.png"), "color": (223, 232, 49)},
-    "autumn": {"img": set_constant_file(IMG_FOLDER, "arbre_automne.png"), "color": (194, 255, 38)},
-    "snow":   {"img": set_constant_file(IMG_FOLDER, "sapin.png"), "color": (224, 224, 224)}
+    "suburb": (140, 255, 140),
+    "desert": (223, 232, 49),
+    "autumn": (194, 255, 38),
+    "snow":   (224, 224, 224)
 }
 
 ########## Infos sur les véhicules ##########

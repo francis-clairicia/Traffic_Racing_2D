@@ -23,7 +23,7 @@ class CountDown(Text):
             self.__callback = None
 
     def __set_value(self, value: int) -> None:
-        self.txt = value
+        self.message = value
 
     def __end(self):
         self.hide()
