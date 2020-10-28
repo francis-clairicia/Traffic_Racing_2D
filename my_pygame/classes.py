@@ -43,8 +43,8 @@ class Text(Drawable):
     T_RIGHT = "right"
     T_CENTER = "center"
 
-    def __init__(self, text=str(), font=None, color=(0, 0, 0),
-                 justify="left", shadow=True, shadow_x=0, shadow_y=0, shadow_color=(0, 0, 0),
+    def __init__(self, message=str(), font=None, color=(0, 0, 0),
+                 justify="left", shadow=False, shadow_x=0, shadow_y=0, shadow_color=(0, 0, 0),
                  img=None, compound="left", **kwargs):
         Drawable.__init__(self, **kwargs)
         self.__str = str()
@@ -56,7 +56,7 @@ class Text(Drawable):
         self.__shadow_surface = Text(self.message, self.font, (0, 0, 0), shadow=False) if shadow else None
         self.__shadow_color = (0, 0, 0)
         self.shadow_color = shadow_color
-        self.config(message=text, font=font, color=color, img=img, justify=justify, compound=compound, shadow=(shadow_x, shadow_y))
+        self.config(message=message, font=font, color=color, img=img, justify=justify, compound=compound, shadow=(shadow_x, shadow_y))
         self.__update_surface()
 
     @property

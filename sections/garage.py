@@ -164,7 +164,7 @@ class EnvironmentChooser(Window):
 
         self.objects.add(master.text_highscore, master.text_money)
 
-        self.text_title = Text("ENVIRONMENT", (RESOURCES.FONT["algerian"], 90), GREEN_DARK, shadow_x=2, shadow_y=2)
+        self.text_title = Text("ENVIRONMENT", (RESOURCES.FONT["algerian"], 90), GREEN_DARK, shadow=True, shadow_x=2, shadow_y=2)
         self.environment = ButtonListHorizontal(offset=15)
         self.texts = DrawableList()
         for name, color in ENVIRONMENT.items():
@@ -175,7 +175,7 @@ class EnvironmentChooser(Window):
                 hover_sound=RESOURCES.SFX["select"], on_click_sound=RESOURCES.SFX["validate"], highlight_color=YELLOW
             )
             b.set_size(200)
-            self.texts.add(Text(name.upper(), (RESOURCES.FONT["algerian"], 50), GREEN_DARK, shadow_x=2, shadow_y=2))
+            self.texts.add(Text(name.upper(), (RESOURCES.FONT["algerian"], 50), GREEN_DARK, shadow=True, shadow_x=2, shadow_y=2))
             self.environment.add(b)
 
         self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=self.button_back.on_click_sound))

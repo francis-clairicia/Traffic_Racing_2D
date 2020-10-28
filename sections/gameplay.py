@@ -336,6 +336,7 @@ class Gameplay(Window):
         params_for_infos = {
             "font": (font, 45),
             "color": YELLOW,
+            "shadow": True,
             "shadow_x": 3,
             "shadow_y": 3
         }
@@ -359,7 +360,7 @@ class Gameplay(Window):
                 self.sprites_traffic_cars[side][car_id] = img_list
         self.clock_traffic = Clock()
         self.img_crash = Image(RESOURCES.IMG["crash"], size=150)
-        self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow_x=5, shadow_y=5)
+        self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow=True, shadow_x=5, shadow_y=5)
         self.last_car_way = 0
 
         # Default values
