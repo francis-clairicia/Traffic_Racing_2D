@@ -114,13 +114,9 @@ class Joystick(object):
             raise NameError("{} isn't recognized".format(key))
         return key
 
-    def __get_event_type(self, key: str) -> Tuple[str, str, int, int]:
-        key = self.__test(key)
-        infos = self.__event_type[key]
-        return (key, *infos)
-
     def get_value(self, key: str) -> int:
-        key, event, index, active_state = self.__get_event_type(key)
+        key = self.__test(key)
+        event, index, active_state = self.__event_type[key]
         if not self.connected():
             return 0
         actions = {
@@ -160,7 +156,7 @@ class Joystick(object):
         infos = self.__event_type[key]
         return infos[1]
 
-    def __setitem__(self, key: str, value: Tuple[int, int, Union[Tuple[int, int], int]]) -> None:
+    def __setitem__(self, key: str, value: Tuple[int, int, Tuple[int, int]]) -> None:
         self.set_event(key, *value)
 
     def set_event(self, key: str, event: int, index: int, hat_value: Optional[Tuple[int, int]] = (0, 0)) -> None:
@@ -186,6 +182,10 @@ class Joystick(object):
     """------------------------------------------------------------------"""
 
     @property
+    def device_index(self):
+        return self.__index
+
+    @property
     def id(self) -> int:
         return self.__joystick.get_instance_id() if self.connected() else -1
 
@@ -205,7 +205,11 @@ class Joystick(object):
 
     @staticmethod
     def list() -> Tuple[str, ...]:
-        return tuple(joystick.get_name() for joystick in [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())])
+        try:
+            joystick = tuple(pygame.joystick.Joystick(i).get_name() for i in range(pygame.joystick.get_count()))
+        except pygame.error:
+            joystick = tuple()
+        return joystick
 
     """------------------------------------------------------------------"""
 

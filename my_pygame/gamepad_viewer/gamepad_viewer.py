@@ -175,6 +175,7 @@ class CalibrateJoystick(Window):
 class GamepadViewer(Window):
     def __init__(self, master=None, size=(800, 600)):
         Window.__init__(self, master=master, size=size)
+        self.font = font = (pygame.font.get_default_font(), 20)
         if self.main_window:
             self.set_title("Diagnostic manettes")
             self.set_fps(60)
@@ -191,8 +192,6 @@ class GamepadViewer(Window):
         self.joystick[0].set_button_axis(True)
         self.master = master
         self.disable_key_joy_focus()
-
-        self.font = font = (pygame.font.get_default_font(), 20)
 
         options = [
             "E: Etalonner",

@@ -41,6 +41,7 @@ class Window:
     __fps = 60
     __fps_obj = None
     __joystick = list()
+    all_window_event_handler_dict = dict()
     keyboard = Keyboard()
 
     def __init__(self, master=None, size=(0, 0), flags=0, bg_color=(0, 0, 0), bg_music=None):
@@ -118,19 +119,19 @@ class Window:
     def set_joystick(self, nb_joysticks: int):
         Window.__joystick = [Joystick(i) for i in range(nb_joysticks)]
         for joy in self.joystick:
-            self.bind_event(pygame.JOYDEVICEADDED, joy.event_connect)
-            self.bind_event(pygame.CONTROLLERDEVICEADDED, joy.event_connect)
-            self.bind_event(pygame.JOYDEVICEREMOVED, joy.event_disconnect)
-            self.bind_event(pygame.CONTROLLERDEVICEREMOVED, joy.event_disconnect)
+            self.bind_event_all_window(pygame.JOYDEVICEADDED, joy.event_connect)
+            self.bind_event_all_window(pygame.CONTROLLERDEVICEADDED, joy.event_connect)
+            self.bind_event_all_window(pygame.JOYDEVICEREMOVED, joy.event_disconnect)
+            self.bind_event_all_window(pygame.CONTROLLERDEVICEREMOVED, joy.event_disconnect)
 
     @property
     def joystick(self) -> Sequence[Joystick]:
         return Window.__joystick
 
     def joy_search_device_index_from_instance_id(self, instance_id: int):
-        for i, joy in enumerate(self.joystick):
+        for joy in self.joystick:
             if joy.id == instance_id:
-                return i
+                return joy.device_index
         return -1
 
     def __setattr__(self, name, obj):
@@ -289,6 +290,8 @@ class Window:
                     callback(event)
             for callback in self.event_handler_dict.get(event.type, tuple()):
                 callback(event)
+            for callback in Window.all_window_event_handler_dict.get(event.type, tuple()):
+                callback(event)
 
     def set_focus(self, obj: Drawable) -> None:
         self.objects.set_focus(obj)
@@ -334,18 +337,15 @@ class Window:
             event_list = self.event_handler_dict[event_type] = list()
         event_list.append(callback)
 
-    def unbind_event(self, event_type, callback):
-        if event_type in self.event_handler_dict and callback in self.event_handler_dict[event_type]:
-            self.event_handler_dict[event_type].remove(callback)
-            if not self.event_handler_dict[event_type]:
-                self.event_handler_dict.pop(event_type)
+    @staticmethod
+    def bind_event_all_window(event_type, callback):
+        event_list = Window.all_window_event_handler_dict.get(event_type)
+        if event_list is None:
+            event_list = Window.all_window_event_handler_dict[event_type] = list()
+        event_list.append(callback)
 
     def bind_mouse(self, callback):
         self.mouse_handler_list.append(callback)
-
-    def unbind_mouse(self, callback):
-        if callback in self.mouse_handler_list:
-            self.mouse_handler_list.remove(callback)
 
     def bind_key(self, key_value, callback, hold=False):
         if not hold:
@@ -356,16 +356,6 @@ class Window:
         if key_list is None:
             key_list = key_dict[key_value] = list()
         key_list.append(callback)
-
-    def unbind_key(self, key_value, callback):
-        if key_value in self.key_handler_dict and callback in self.key_handler_dict[key_value]:
-            self.key_handler_dict[key_value].remove(callback)
-            if not self.key_handler_dict[key_value]:
-                self.key_handler_dict.pop(key_value)
-        elif key_value in self.key_state_dict and callback in self.key_state_dict[key_value]:
-            self.key_state_dict[key_value].remove(callback)
-            if not self.key_state_dict[key_value]:
-                self.key_state_dict.pop(key_value)
 
     def bind_joystick(self, joy_id, action, callback):
         joystick_dict = self.joystick_handler_dict.get(joy_id)
