@@ -21,6 +21,9 @@ class Save:
     def __setitem__(self, key: str, value):
         self.__save[key] = value
 
+    def update(self, **kwargs):
+        self.__save.update(**kwargs)
+
     def dump(self):
         with open(self.__save_file, "wb") as save:
             pickle.dump(self.__save, save)

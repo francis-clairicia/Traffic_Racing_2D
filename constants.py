@@ -7,11 +7,10 @@ IMG_FOLDER = set_constant_directory("files", "img")
 AUDIO_FOLDER = set_constant_directory("files", "sounds")
 FONT_FOLDER = set_constant_directory("files", "fonts")
 
-#Icone
-ICON = set_constant_file(IMG_FOLDER, "icone.ico")
-
 ########## Images ##########
 RESOURCES.IMG = {
+    ########## Icone ##########
+    "icon": set_constant_file(IMG_FOLDER, "icone.ico"),
     ########## Logo/Image de fond du jeu ##########
     "logo": set_constant_file(IMG_FOLDER, "logo.png"),
     "background": set_constant_file(IMG_FOLDER, "wallpaper.jpg"),
@@ -97,13 +96,13 @@ ENVIRONMENT = {
 # - maniability en px/s
 # - braking en sec (le temps qu'il faut pour passer de max_speed à 0km)
 CAR_INFOS = {
-    1: {"price": None, "max_speed": 80, "acceleration": 5, "maniability": 260, "braking": 4},
-    2: {"price": 5000, "max_speed": 100, "acceleration": 4.6, "maniability": 272, "braking": 3.5},
-    3: {"price": 12500, "max_speed": 120, "acceleration": 4.2, "maniability": 284, "braking": 3.1},
-    4: {"price": 30000, "max_speed": 150, "acceleration": 3.5, "maniability": 290, "braking": 2.8},
-    5: {"price": 55000, "max_speed": 180, "acceleration": 3.1, "maniability": 302, "braking": 2.5},
-    6: {"price": 85000, "max_speed": 200, "acceleration": 2.8, "maniability": 320, "braking": 2.3},
-    7: {"price": 100000, "max_speed": 230, "acceleration": 2.5, "maniability": 350, "braking": 2},
-    8: {"price": 500000, "max_speed": 260, "acceleration": 2.3, "maniability": 362, "braking": 1.7},
-    9: {"price": 1000000, "max_speed": 280, "acceleration": 2, "maniability": 380, "braking": 1.5}
+    1: {"price": None, "max_speed": 80, "acceleration": 5, "maniability": 260, "braking": 3},
+    2: {"price": 5000, "max_speed": 100, "acceleration": 4.6, "maniability": 272, "braking": 2.5},
+    3: {"price": 12500, "max_speed": 120, "acceleration": 4.2, "maniability": 284, "braking": 2.1},
+    4: {"price": 30000, "max_speed": 150, "acceleration": 3.5, "maniability": 290, "braking": 1.8},
+    5: {"price": 55000, "max_speed": 180, "acceleration": 3.1, "maniability": 302, "braking": 1.5},
+    6: {"price": 85000, "max_speed": 200, "acceleration": 2.8, "maniability": 320, "braking": 1.3},
+    7: {"price": 100000, "max_speed": 230, "acceleration": 2.5, "maniability": 350, "braking": 1},
+    8: {"price": 500000, "max_speed": 260, "acceleration": 2.3, "maniability": 362, "braking": 0.7},
+    9: {"price": 1000000, "max_speed": 280, "acceleration": 2, "maniability": 380, "braking": 0.5}
 }

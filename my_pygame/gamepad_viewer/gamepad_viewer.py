@@ -6,7 +6,7 @@ from math import sqrt
 from ..window import Window, RESOURCES
 from ..path import set_constant_directory, set_constant_file
 from ..list import DrawableListVertical
-from ..classes import Text, Image, CircleShape
+from ..classes import Text, Image, RectangleShape, CircleShape
 from ..colors import WHITE, BLACK
 from ..joystick import Joystick
 
@@ -37,7 +37,7 @@ class Gamepad(Image):
 
     def after_drawing(self, surface: pygame.Surface) -> None:
         for button, img in self.gamepad_dict.items():
-            if self.joystick[button]:
+            if self.joystick.get_value(button):
                 surface.blit(img, self.rect)
         if self.index == 1:
             self.draw_circle_axis(surface)
@@ -63,8 +63,8 @@ class Gamepad(Image):
         for side in joystick:
             h = joystick[side]["x"]
             k = joystick[side]["y"]
-            x = a = self.joystick[f"AXIS_{side}_X"]*r + h
-            y = b = self.joystick[f"AXIS_{side}_Y"]*r + k
+            x = a = self.joystick.get_value(f"AXIS_{side}_X")*r + h
+            y = b = self.joystick.get_value(f"AXIS_{side}_Y")*r + k
             if (a-h)**2 + (b-k)**2 > r**2:
                 x = h + (r*(a-h))/sqrt((a-h)**2 + (b-k)**2)
                 y = k + (r*(b-k))/sqrt((a-h)**2 + (b-k)**2)
@@ -73,7 +73,7 @@ class Gamepad(Image):
 
         for side, button in (("LEFT", "L3"), ("RIGHT", "R3")):
             circle = CircleShape(radius, WHITE, outline=1)
-            intern_circle = CircleShape(round(0.704*radius), BLACK if self.joystick[button] else None, outline=1)
+            intern_circle = CircleShape(round(0.704*radius), BLACK if self.joystick.get_value(button) else None, outline=1)
             circle.center = intern_circle.center = axis_center[side]
             circle.draw(surface_for_axis)
             intern_circle.draw(surface_for_axis)
@@ -81,10 +81,12 @@ class Gamepad(Image):
         surface.blit(surface_for_axis, self.rect)
 
 class CalibrateJoystick(Window):
-    def __init__(self, master):
-        Window.__init__(self, bg_color=master.bg_color)
+    def __init__(self, master, master_draw=None):
+        Window.__init__(self, master=master_draw, bg_color=master.bg_color)
         self.disable_key_joy_focus()
 
+        self.bg = master.bg
+        self.frame = master.frame
         self.font = font = (pygame.font.get_default_font(), 30)
         options = [
             "S: Passer",
@@ -113,9 +115,9 @@ class CalibrateJoystick(Window):
         for event in (pygame.JOYBUTTONDOWN, pygame.JOYAXISMOTION, pygame.JOYHATMOTION):
             self.bind_event(event, self.calibration_event)
 
-    def set_grid(self):
-        self.topleft_options.move(left=10, top=10)
-        self.instruction.move(y=250, centerx=self.centerx)
+    def place_objects(self):
+        self.topleft_options.move(left=self.frame.left + 10, top=self.frame.top + 10)
+        self.instruction.move(top=self.frame.top + 250, centerx=self.frame.centerx)
         self.joy_key.move(top=self.instruction.bottom, centerx=self.instruction.centerx)
         self.validated.move(top=self.joy_key.bottom, centerx=self.instruction.centerx)
 
@@ -171,18 +173,30 @@ class CalibrateJoystick(Window):
             self.after(1000, lambda: self.next_joy(after_validation=True))
 
 class GamepadViewer(Window):
-    def __init__(self):
-        Window.__init__(self, size=(800, 600), bg_color=WHITE)
+    def __init__(self, master=None, size=(800, 600)):
+        Window.__init__(self, master=master, size=size)
         if self.main_window:
             self.set_title("Diagnostic manettes")
-        self.set_joystick(1)
+            self.set_fps(60)
+            self.config_fps_obj(font=font, color=BLACK)
+        if not self.joystick:
+            self.set_joystick(1)
+        if isinstance(master, Window):
+            self.bg_music = master.bg_music
+            self.bg = RectangleShape(self.width, self.height, (0, 0, 0, 170))
+            self.frame = RectangleShape(*size, WHITE, outline=3, outline_color=BLACK)
+        else:
+            self.frame = self.bg = RectangleShape(self.width, self.height, WHITE)
+        self.former_button_axis_state = self.joystick[0].get_button_axis_state()
+        self.joystick[0].set_button_axis(True)
+        self.master = master
         self.disable_key_joy_focus()
 
         self.font = font = (pygame.font.get_default_font(), 20)
-        self.config_fps_obj(font=font, color=BLACK)
 
         options = [
-            "E: Etalonner"
+            "E: Etalonner",
+            "ESCAPE: Quitter"
         ]
         self.topleft_options = Text("\n".join(options), font)
         self.connected_gamepad_title = Text("Liste des manettes connectées", font)
@@ -191,13 +205,19 @@ class GamepadViewer(Window):
         self.gamepad_1 = Gamepad(self.joystick[0], RESOURCES.IMG, 1)
         self.gamepad_2 = Gamepad(self.joystick[0], RESOURCES.IMG, 2)
 
-        self.bind_key(pygame.K_e, lambda key: CalibrateJoystick(self).mainloop())
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop())
+        self.bind_key(pygame.K_e, lambda key: self.calibrate())
+
+    def on_quit(self):
+        self.joystick[0].set_button_axis(self.former_button_axis_state)
 
     def place_objects(self):
-        self.move_fps_object(top=10, right=self.right)
-        self.topleft_options.move(left=10, top=10)
+        self.frame.center = self.center
+        if self.main_window:
+            self.move_fps_object(top=self.frame.top + 10, right=self.frame.right - 10)
+        self.topleft_options.move(left=self.frame.left + 10, top=self.frame.top + 10)
         self.connected_gamepad_title.move(left=self.topleft_options.left, top=self.topleft_options.bottom + 30)
-        self.gamepad_1.move(bottom=self.bottom - 10, right=self.right - 10)
+        self.gamepad_1.move(bottom=self.frame.bottom - 10, right=self.frame.right - 10)
         self.gamepad_2.move(bottom=self.gamepad_1.top - 20, centerx=self.gamepad_1.centerx)
 
     def update(self):
@@ -205,3 +225,8 @@ class GamepadViewer(Window):
         for i, nom in enumerate(Joystick.list()):
             self.connected_gamepad.add(Text(" {} {}".format(">" if i == 0 else " ", nom), self.font))
         self.connected_gamepad.move(left=self.connected_gamepad_title.left, top=self.connected_gamepad_title.bottom)
+
+    def calibrate(self):
+        self.hide_all(without=[self.bg, self.frame])
+        CalibrateJoystick(self, master_draw=self.master).mainloop()
+        self.show_all()

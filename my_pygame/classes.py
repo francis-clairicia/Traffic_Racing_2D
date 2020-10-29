@@ -49,11 +49,12 @@ class Text(Drawable):
         Drawable.__init__(self, **kwargs)
         self.__str = str()
         self.__font = None
+        self.__custom_font = dict()
         self.__color = (0, 0, 0)
         self.__img = None
         self.__compound = self.__justify = "left"
         self.__shadow = (0, 0)
-        self.__shadow_surface = Text(self.message, self.font, (0, 0, 0), shadow=False) if shadow else None
+        self.__shadow_surface = Text(self.__str, self.font, (0, 0, 0), shadow=False) if shadow else None
         self.__shadow_color = (0, 0, 0)
         self.shadow_color = shadow_color
         self.config(message=message, font=font, color=color, img=img, justify=justify, compound=compound, shadow=(shadow_x, shadow_y))
@@ -125,28 +126,32 @@ class Text(Drawable):
         if self.__shadow_surface:
             self.__shadow_surface.color = color
 
+    @staticmethod
+    def create_font_object(font) -> Font:
+        obj = None
+        if isinstance(font, (tuple, list)):
+            if str(font[0]).endswith((".ttf", ".otf")):
+                obj = Font(*font[0:2])
+                if "bold" in font:
+                    obj.set_bold(True)
+                if "italic" in font:
+                    obj.set_italic(True)
+            else:
+                obj = SysFont(*font[0:2], bold=bool("bold" in font), italic=bool("italic" in font))
+            if "underline" in font:
+                obj.set_underline(True)
+        elif isinstance(font, Font):
+            obj = font
+        else:
+            obj = SysFont(pygame.font.get_default_font(), 15)
+        return obj
+
     def config(self, **kwargs):
         config_for_shadow = dict()
         if "message" in kwargs:
             config_for_shadow["message"] = self.__str = str(kwargs["message"])
         if "font" in kwargs:
-            font = kwargs["font"]
-            if isinstance(font, (tuple, list)):
-                if str(font[0]).endswith((".ttf", ".otf")):
-                    self.__font = Font(*font[0:2])
-                    if "bold" in font:
-                        self.__font.set_bold(True)
-                    if "italic" in font:
-                        self.__font.set_italic(True)
-                else:
-                    self.__font = SysFont(*font[0:2], bold=bool("bold" in font), italic=bool("italic" in font))
-                if "underline" in font:
-                    self.__font.set_underline(True)
-            elif isinstance(font, Font):
-                self.__font = font
-            else:
-                self.__font = SysFont(pygame.font.get_default_font(), 15)
-            config_for_shadow["font"] = self.__font
+            config_for_shadow["font"] = self.__font = self.create_font_object(kwargs["font"])
         if "color" in kwargs:
             self.__color = tuple(kwargs["color"])
         if "justify" in kwargs and kwargs["justify"] in ("left", "right", "center"):
@@ -171,16 +176,24 @@ class Text(Drawable):
             self.__shadow_surface.move(x=self.x + self.shadow[0], y=self.y + self.shadow[1])
             self.__shadow_surface.draw(surface)
 
+    def set_custom_line_font(self, index: int, font):
+        self.__custom_font[index] = self.create_font_object(font)
+        self.__update_surface()
+
+    def remove_custom_line_font(self, index: int):
+        self.__custom_font.pop(index, None)
+        self.__update_surface()
+
     def __update_surface(self) -> None:
         render_lines = list()
-        for line in self.message.splitlines():
-            render = self.font.render(line, True, self.color)
+        size = [0, 0]
+        for index, line in enumerate(self.message.splitlines()):
+            font = self.__custom_font.get(index, self.font)
+            render = font.render(line, True, self.color)
+            size[0] = max(size[0], render.get_width())
+            size[1] += render.get_height()
             render_lines.append(render)
         if render_lines:
-            size = (
-                max(render.get_width() for render in render_lines),
-                sum(render.get_height() for render in render_lines)
-            )
             text = pygame.Surface(size, flags=pygame.SRCALPHA)
             self.fill((0, 0, 0, 0))
             y = 0
@@ -208,8 +221,8 @@ class Text(Drawable):
                 size[field] = function_to_get_size[self.compound][field](getattr(obj, field) for obj in [text.get_rect(), self.img])
             w = size["width"] + 5
             h = size["height"]
-            self.image = pygame.Surface((w, h), flags=pygame.SRCALPHA)
-            rect_to_draw = self.image.get_rect()
+            surface_to_draw = pygame.Surface((w, h), flags=pygame.SRCALPHA)
+            rect_to_draw = surface_to_draw.get_rect()
             move_text = {
                 "left": {"right": rect_to_draw.right, "centery": rect_to_draw.centery},
                 "right": {"left": rect_to_draw.left, "centery": rect_to_draw.centery},
@@ -224,9 +237,10 @@ class Text(Drawable):
                 "bottom": {"bottom": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
                 "center": {"center": rect_to_draw.center}
             }
-            self.blit(text, text.get_rect(**move_text[self.compound]))
+            surface_to_draw.blit(text, text.get_rect(**move_text[self.compound]))
             self.img.move(**move_img[self.compound])
-            self.img.draw(self)
+            self.img.draw(surface_to_draw)
+            self.image = surface_to_draw
         else:
             self.image = text
 
@@ -295,15 +309,16 @@ class CircleShape(Drawable):
 class Button(Clickable, RectangleShape):
     def __init__(self, master, text=str(), font=None, img=None, compound="left",
                  callback: Optional[Callable[..., Any]] = None, state="normal",
+                 size=None, outline=2, outline_color=(0, 0, 0),
                  bg=(255, 255, 255), fg=(0, 0, 0),
-                 outline=2, outline_color=(0, 0, 0),
                  hover_bg=(235, 235, 235), hover_fg=None, hover_sound=None,
                  active_bg=(128, 128, 128), active_fg=None, on_click_sound=None,
                  disabled_bg=(128, 128, 128), disabled_fg=None, disabled_sound=None,
                  highlight_color=(0, 0, 255),
                  **kwargs):
         self.text = Text(text, font, fg, justify=Text.T_CENTER, img=img, compound=compound)
-        size = (self.text.w + 20, self.text.h + 20)
+        if not isinstance(size, (list, tuple)) or len(size) != 2:
+            size = (self.text.w + 20, self.text.h + 20)
         RectangleShape.__init__(self, *size, color=bg, outline=outline, outline_color=outline_color, **kwargs)
         self.fg = fg
         self.bg = bg
@@ -568,21 +583,19 @@ class Scale(Clickable, ProgressBar):
                  highlight_color=(0, 0, 255), hover_sound=None, on_click_sound=None, **kwargs):
         ProgressBar.__init__(self, **kwargs)
         Clickable.__init__(self, master, callback, state=state, highlight_color=highlight_color, hover_sound=hover_sound, on_click_sound=on_click_sound)
-        master.bind_joystick_axis(0, "AXIS_LEFT_X", self.axis_event)
+        master.bind_joystick(0, "AXIS_LEFT_X", self.axis_event)
         master.bind_key(pygame.K_KP_MINUS, self.key_event, hold=True)
         master.bind_key(pygame.K_KP_PLUS, self.key_event, hold=True)
-
-    def before_drawing(self, surface: pygame.Surface) -> None:
-        self.call_update()
-        ProgressBar.before_drawing(self, surface)
 
     def mouse_move_event(self, mouse_pos) -> None:
         if self.active:
             self.percent = (mouse_pos[0] - self.x) / self.width
+            self.call_update()
 
     def axis_event(self, value) -> None:
-        if self.has_focus() and self.active:
+        if self.has_focus():
             self.percent += (0.01 * value)
+            self.call_update()
 
     def key_event(self, key_value: int, key_state: bool) -> None:
         if self.has_focus():
@@ -592,6 +605,7 @@ class Scale(Clickable, ProgressBar):
             elif key_value == pygame.K_KP_PLUS:
                 offset = 1
             self.percent += offset * key_state * 0.005
+            self.call_update()
 
     def on_click_down(self, event: Event) -> None:
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -601,8 +615,8 @@ class Scale(Clickable, ProgressBar):
         self.mouse_move_event(mouse_pos)
 
     def call_update(self):
-        if hasattr(self, "callback") and self.callback:
-            self.callback.__call__()
+        if hasattr(self, "callback") and callable(self.callback):
+            self.callback()
 
 class CheckBox(Clickable, RectangleShape):
     def __init__(self, master, width: int, height: int, color: tuple, value=False, on_value=True, off_value=False,

@@ -16,6 +16,9 @@ class Drawable(Sprite):
         self.__draw_sprite = True
         self.__valid_size = True
         self.image = surface
+        for key in list(kwargs.keys()):
+            if not hasattr(self.__rect, key):
+                kwargs.pop(key)
         self.move(**kwargs)
 
     @classmethod

@@ -25,6 +25,7 @@ class CarViewer(Clickable, Image):
             self.__all_braking.append(infos["braking"])
 
         self.take_focus(True)
+        self.disable_key_joy()
         self.disable_mouse()
         self.master.bind_event(pygame.KEYDOWN, self.on_click_down)
         self.master.bind_event(pygame.KEYUP, self.on_click_up)
@@ -46,19 +47,19 @@ class CarViewer(Clickable, Image):
 
     @property
     def max_speed(self) -> int:
-        return round(max(self.__all_max_speed) * 1.10)
+        return max(self.__all_max_speed) * 1.10
 
     @property
     def min_acceleration(self) -> int:
-        return round(min(self.__all_acceleration) * 0.90)
+        return min(self.__all_acceleration) * 0.90
 
     @property
     def max_maniability(self) -> int:
-        return round(max(self.__all_maniablities) * 1.30)
+        return max(self.__all_maniablities) * 1.30
 
     @property
     def min_braking(self) -> int:
-        return round(min(self.__all_braking) * 0.80)
+        return min(self.__all_braking) * 0.80
 
     def __getitem__(self, key: str):
         return CAR_INFOS[self.id][key]
@@ -136,7 +137,7 @@ class ConfirmPayement(Window):
         )
         self.buyed = False
         self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=RESOURCES.SFX["back"]))
-        self.bind_joystick_button(0, "B", lambda event: self.stop(sound=RESOURCES.SFX["back"]))
+        self.bind_joystick(0, "B", lambda event: self.stop(sound=RESOURCES.SFX["back"]))
 
     def place_objects(self):
         self.text.center = self.frame.center = self.center
@@ -178,8 +179,8 @@ class EnvironmentChooser(Window):
             self.texts.add(Text(name.upper(), (RESOURCES.FONT["algerian"], 50), GREEN_DARK, shadow=True, shadow_x=2, shadow_y=2))
             self.environment.add(b)
 
-        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=self.button_back.on_click_sound))
-        self.bind_joystick_button(0, "B", lambda event: self.stop(sound=self.button_back.on_click_sound))
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=RESOURCES.SFX["back"]))
+        self.bind_joystick(0, "B", lambda event: self.stop(sound=RESOURCES.SFX["back"]))
 
     def place_objects(self):
         self.button_back.topleft = (5, 5)
@@ -249,8 +250,8 @@ class Garage(Window):
         self.text_money = Text(format_number(SAVE["money"]), (RESOURCES.FONT["algerian"], 50), YELLOW, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
         self.text_highscore = Text("Highscore: {}".format(SAVE["highscore"]), (RESOURCES.FONT["algerian"], 50), YELLOW)
         self.padlock = Image(RESOURCES.IMG["padlock"])
-        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=self.button_back.on_click_sound))
-        self.bind_joystick_button(0, "B", lambda event: self.stop(sound=self.button_back.on_click_sound))
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=RESOURCES.SFX["back"]))
+        self.bind_joystick(0, "B", lambda event: self.stop(sound=RESOURCES.SFX["back"]))
 
     def update(self):
         self.left_arrow.set_visibility(self.car_viewer.id > 1)

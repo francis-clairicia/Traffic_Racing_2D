@@ -30,6 +30,7 @@ class WindowCallback(object):
 
 class Window:
 
+    surface = property(lambda self: pygame.display.get_surface())
     __all_opened = list()
     __sound_volume = 0
     __music_volume = 0
@@ -45,8 +46,7 @@ class Window:
     def __init__(self, master=None, size=(0, 0), flags=0, bg_color=(0, 0, 0), bg_music=None):
         Window.init_pygame(size, flags)
         self.__master = master
-        self.window = pygame.display.get_surface()
-        self.rect = self.window.get_rect()
+        self.rect = self.surface.get_rect()
         self.main_clock = pygame.time.Clock()
         self.loop = False
         self.objects = DrawableList()
@@ -70,14 +70,14 @@ class Window:
         for event in focus_event:
             self.bind_event(event, self.handle_focus)
         mouse_hide_event = (
+            pygame.KEYDOWN,
+            pygame.KEYUP,
             pygame.JOYBUTTONDOWN,
             pygame.JOYBUTTONUP,
             pygame.JOYAXISMOTION,
             pygame.JOYHATMOTION
         )
         mouse_show_event = (
-            pygame.KEYDOWN,
-            pygame.KEYUP,
             pygame.MOUSEBUTTONDOWN,
             pygame.MOUSEBUTTONUP,
             pygame.MOUSEMOTION,
@@ -91,10 +91,6 @@ class Window:
         self.bind_key(pygame.K_F11, lambda event: self.screenshot())
         if not Window.__fps_obj:
             Window.__fps_obj = Text(color=(0, 0, 255))
-
-    def after_init(self):
-        self.place_objects()
-        self.set_grid()
 
     @staticmethod
     def init_pygame(size=(0, 0), flags=0):
@@ -157,8 +153,7 @@ class Window:
         self.__key_enabled = False
 
     @staticmethod
-    def set_icon(icon_filepath):
-        icon = pygame.image.load(icon_filepath).convert_alpha()
+    def set_icon(icon: pygame.Surface):
         pygame.display.set_icon(icon)
 
     @staticmethod
@@ -188,8 +183,6 @@ class Window:
             self.fps_update()
             self.update()
             self.keyboard.update()
-            for joystick in self.joystick:
-                joystick.update()
             self.draw_and_refresh()
             self.event_handler()
             self.handle_bg_music()
@@ -219,14 +212,14 @@ class Window:
 
     def draw_screen(self, show_fps=True):
         if self.bg_color:
-            self.window.fill(self.bg_color)
+            self.surface.fill(self.bg_color)
         if isinstance(self.__master, Window):
             self.__master.draw_screen(show_fps=False)
-        self.objects.draw(self.window)
+        self.objects.draw(self.surface)
         if Window.__show_fps is True and show_fps:
-            Window.__fps_obj.draw(self.window)
+            Window.__fps_obj.draw(self.surface)
         if self.__screenshot:
-            pygame.draw.rect(self.window, (255, 255, 255), self.rect, width=30)
+            pygame.draw.rect(self.surface, (255, 255, 255), self.rect, width=30)
 
     @staticmethod
     def set_fps(framerate: int) -> None:
@@ -282,7 +275,7 @@ class Window:
             for id_, callback_list in self.joystick_handler_dict[joy_id].items():
                 if id_.startswith("AXIS"):
                     for callback in callback_list:
-                        callback(self.joystick[joy_id][id_])
+                        callback(self.joystick[joy_id].get_value(id_))
         for event in pygame.event.get():
             if event.type == pygame.QUIT \
             or (event.type == pygame.KEYDOWN and event.key == pygame.K_F4 and (event.mod & pygame.KMOD_LALT)):
@@ -374,17 +367,14 @@ class Window:
             if not self.key_state_dict[key_value]:
                 self.key_state_dict.pop(key_value)
 
-    def bind_joystick_button(self, joy_id, button_id, callback):
+    def bind_joystick(self, joy_id, action, callback):
         joystick_dict = self.joystick_handler_dict.get(joy_id)
         if joystick_dict is None:
             joystick_dict = self.joystick_handler_dict[joy_id] = dict()
-        joystick_list = joystick_dict.get(button_id)
+        joystick_list = joystick_dict.get(action)
         if joystick_list is None:
-            joystick_list = joystick_dict[button_id] = list()
+            joystick_list = joystick_dict[action] = list()
         joystick_list.append(callback)
-
-    def bind_joystick_axis(self, joy_id, axis_id, callback):
-        self.bind_joystick_button(joy_id, axis_id, callback)
 
     def screenshot(self):
         if not self.__screenshot:
@@ -392,7 +382,7 @@ class Window:
             i = 1
             while os.path.isfile(os.path.join(sys.path[0], f"screenshot_{i}.png")):
                 i += 1
-            pygame.image.save(self.window, os.path.join(sys.path[0], f"screenshot_{i}.png"))
+            pygame.image.save(self.surface, os.path.join(sys.path[0], f"screenshot_{i}.png"))
             self.after(1000, self.__hide_screenshot_frame)
 
     def __hide_screenshot_frame(self):

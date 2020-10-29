@@ -17,7 +17,6 @@ class Joystick(object):
         self.__dpad_list = ["UP", "DOWN", "LEFT", "RIGHT"]
 
         self.__event_type = {key: [str(), -1, 0] for key in self.button_list + self.axis_list + self.dpad_list}
-        self.__event_state = {key: dict() for key in ("button", "axis", "hat")}
 
         self.__save_file = os.path.join(sys.path[0], "joystick.bin")
         if os.path.isfile(self.__save_file):
@@ -26,8 +25,6 @@ class Joystick(object):
         else:
             self.__save = dict()
             self.set_default_layout()
-        self.__nb_update = 0
-        self.__nb_update_to_uninitialize = 60
         self.__button_axis_return_bool = True
 
     """-----------------------------------------------------"""
@@ -41,6 +38,10 @@ class Joystick(object):
         if event.type in (pygame.CONTROLLERDEVICEADDED, pygame.JOYDEVICEADDED) and event.device_index == self.__index:
             self.__joystick = pygame.joystick.Joystick(event.device_index)
             self.__joystick.init()
+            if self.guid in self.__save:
+                self.__event_type = self.__save[self.guid]
+            else:
+                self.set_default_layout()
 
     def event_disconnect(self, event: pygame.event.Event) -> None:
         if not self.connected():
@@ -49,56 +50,42 @@ class Joystick(object):
             self.__joystick.quit()
             self.__joystick = None
 
-    def update(self) -> None:
-        if not self.connected():
-            return
-        joystick = self.__joystick
-        try:
-            if self.guid in self.__save:
-                self.__event_type = self.__save[self.guid]
-            else:
-                self.set_default_layout()
-            actions = [
-                ("button", joystick.get_numbuttons, joystick.get_button),
-                ("axis", joystick.get_numaxes, joystick.get_axis),
-                ("hat", joystick.get_numhats, joystick.get_hat),
-            ]
-            for event, get_max_number, get_value in actions:
-                for i in range(get_max_number()):
-                    self.__event_state[event][i] = get_value(i)
-        except pygame.error:
-            for key in self.__event_state:
-                self.__event_state[key].clear()
-
     """------------------------------------------------------------------"""
 
     def set_default_layout(self):
         layout = {
-            "A":            ("button", 0, 1),
-            "B":            ("button", 1, 1),
-            "X":            ("button", 2, 1),
-            "Y":            ("button", 3, 1),
-            "L1":           ("button", 4, 1),
-            "R1":           ("button", 5, 1),
-            "SELECT":       ("button", 6, 1),
-            "START":        ("button", 7, 1),
-            "L3":           ("button", 8, 1),
-            "R3":           ("button", 9, 1),
-            "HOME":         ("button", 10, 1),
-            "UP":           ("hat", 0, (0, 1)),
-            "DOWN":         ("hat", 0, (0, -1)),
-            "LEFT":         ("hat", 0, (-1, 0)),
-            "RIGHT":        ("hat", 0, (1, 0)),
-            "L2":           ("axis", 2, 0),
-            "R2":           ("axis", 5, 0),
-            "AXIS_LEFT_X":  ("axis", 0, 0),
-            "AXIS_LEFT_Y":  ("axis", 1, 0),
-            "AXIS_RIGHT_X": ("axis", 3, 0),
-            "AXIS_RIGHT_Y": ("axis", 4, 0),
+            "A":             ("button", 0, 1),
+            "B":             ("button", 1, 1),
+            "X":             ("button", 2, 1),
+            "Y":             ("button", 3, 1),
+            "L1":            ("button", 4, 1),
+            "R1":            ("button", 5, 1),
+            "SELECT":        ("button", 6, 1),
+            "START":         ("button", 7, 1),
+            "L3":            ("button", 8, 1),
+            "R3":            ("button", 9, 1),
+            "HOME":          ("button", 10, 1),
+            "UP":            ("hat", 0, (0, 1)),
+            "DOWN":          ("hat", 0, (0, -1)),
+            "LEFT":          ("hat", 0, (-1, 0)),
+            "RIGHT":         ("hat", 0, (1, 0)),
+            "L2":            ("axis", 2, 1),
+            "R2":            ("axis", 5, 1),
+            "AXIS_LEFT_X":   ("axis", 0, 0),
+            "AXIS_LEFT_X-":  ("axis", 0, -1),
+            "AXIS_LEFT_X+":  ("axis", 0, 1),
+            "AXIS_LEFT_Y":   ("axis", 1, 0),
+            "AXIS_LEFT_Y-":  ("axis", 1, -1),
+            "AXIS_LEFT_Y+":  ("axis", 1, 1),
+            "AXIS_RIGHT_X":  ("axis", 3, 0),
+            "AXIS_RIGHT_X-": ("axis", 3, -1),
+            "AXIS_RIGHT_X+": ("axis", 3, 1),
+            "AXIS_RIGHT_Y":  ("axis", 4, 0),
+            "AXIS_RIGHT_Y-": ("axis", 4, -1),
+            "AXIS_RIGHT_Y+": ("axis", 4, 1),
         }
-        for key in layout:
-            for i in range(3):
-                self.__event_type[key][i] = layout[key][i]
+        for key, value in layout.items():
+            self.__event_type[key] = list(value)
 
     def __save_to_file(self):
         self.__save[self.guid] = dict(self.__event_type)
@@ -121,9 +108,9 @@ class Joystick(object):
 
     """------------------------------------------------------------------"""
 
-    def __test(self, key: str) -> None:
+    def __test(self, key: str) -> str:
         key = key.upper()
-        if key not in self.button_list + self.axis_list + self.dpad_list:
+        if key not in self.__event_type:
             raise NameError("{} isn't recognized".format(key))
         return key
 
@@ -133,22 +120,15 @@ class Joystick(object):
         return (key, *infos)
 
     def get_value(self, key: str) -> int:
-        key = self.__test(key)
-        infos = self.__event_type[key]
-        return infos[1]
-
-    def search_key(self, event_type: str, index: int, hat_value: Optional[Tuple[int, int]] = (0, 0)) -> Union[str, None]:
-        for key, value in self.__event_type.items():
-            event, idx, value = value
-            if event == event_type and idx == index and (event != "hat" or value == hat_value):
-                return key
-        return None
-
-    def __getitem__(self, key: str) -> Union[int, float]:
         key, event, index, active_state = self.__get_event_type(key)
-        if event not in self.__event_state:
+        if not self.connected():
             return 0
-        state = self.__event_state[event].get(index, 0)
+        actions = {
+            "button": self.__joystick.get_button,
+            "axis": self.__joystick.get_axis,
+            "hat": self.__joystick.get_hat,
+        }
+        state = actions[event](index)
         if key in self.button_list + self.dpad_list:
             if event == "button":
                 return state
@@ -157,24 +137,51 @@ class Joystick(object):
             if event == "axis":
                 if self.__button_axis_return_bool:
                     return 1 if state >= 0.9 else 0
+                if active_state != 0:
+                    if (active_state > 0 and state < 0) or (active_state < 0 and state > 0):
+                        return 0
+                    return abs(state)
                 return state
             return 0
+        elif active_state != 0:
+            if (active_state > 0 and state < 0) or (active_state < 0 and state > 0):
+                return 0
+            return abs(state)
         return state
+
+    def search_key(self, event_type: str, index: int, hat_value: Optional[Tuple[int, int]] = None, axis: Optional[int] = None) -> Union[str, None]:
+        for key, (event, idx, value) in self.__event_type.items():
+            if event == event_type and idx == index and (event != "hat" or value == hat_value) and (event != "axis" or axis is None or value == axis):
+                return key
+        return None
+
+    def __getitem__(self, key: str) -> Union[int, float]:
+        key = self.__test(key)
+        infos = self.__event_type[key]
+        return infos[1]
+
+    def __setitem__(self, key: str, value: Tuple[int, int, Union[Tuple[int, int], int]]) -> None:
+        self.set_event(key, *value)
 
     def set_event(self, key: str, event: int, index: int, hat_value: Optional[Tuple[int, int]] = (0, 0)) -> None:
         key = self.__test(key)
         event_map = {
             pygame.JOYBUTTONDOWN: ("button", index, 1),
-            pygame.JOYAXISMOTION: ("axis", index, 0),
+            pygame.JOYAXISMOTION: ("axis", index, 0 if key not in self.button_list + self.dpad_list else 1),
             pygame.JOYHATMOTION: ("hat", index, hat_value)
         }
         if event in event_map:
-            for i in range(len(event_map[event])):
-                self.__event_type[key][i] = event_map[event][i]
+            self.__event_type[key] = list(event_map[event])
+            if key.startswith("AXIS_") and event_map[event][0] == "axis":
+                self.__event_type[key + "-"] = [*event_map[event][0:2], -1]
+                self.__event_type[key + "+"] = [*event_map[event][0:2], 1]
             self.__save_to_file()
 
     def set_button_axis(self, state: bool) -> None:
         self.__button_axis_return_bool = bool(state)
+
+    def get_button_axis_state(self) -> bool:
+        return self.__button_axis_return_bool
 
     """------------------------------------------------------------------"""
 
@@ -202,23 +209,23 @@ class Joystick(object):
 
     """------------------------------------------------------------------"""
 
-    A = property(lambda self: self.get_value("A"))
-    B = property(lambda self: self.get_value("B"))
-    X = property(lambda self: self.get_value("X"))
-    Y = property(lambda self: self.get_value("Y"))
-    L1 = property(lambda self: self.get_value("L1"))
-    L2 = property(lambda self: self.get_value("L2"))
-    L3 = property(lambda self: self.get_value("L3"))
-    R1 = property(lambda self: self.get_value("R1"))
-    R2 = property(lambda self: self.get_value("R2"))
-    R3 = property(lambda self: self.get_value("R3"))
-    SELECT = property(lambda self: self.get_value("SELECT"))
-    START = property(lambda self: self.get_value("START"))
-    UP = property(lambda self: self.get_value("UP"))
-    DOWN = property(lambda self: self.get_value("DOWN"))
-    LEFT = property(lambda self: self.get_value("LEFT"))
-    RIGHT = property(lambda self: self.get_value("RIGHT"))
-    AXIS_LEFT_X = property(lambda self: self.get_value("AXIS_LEFT_X"))
-    AXIS_LEFT_Y = property(lambda self: self.get_value("AXIS_LEFT_Y"))
-    AXIS_RIGHT_X = property(lambda self: self.get_value("AXIS_RIGHT_X"))
-    AXIS_RIGHT_Y = property(lambda self: self.get_value("AXIS_RIGHT_Y"))
+    A = property(lambda self: self.__getitem__("A"), lambda self, value: self.set_event("A", *value))
+    B = property(lambda self: self.__getitem__("B"), lambda self, value: self.set_event("B", *value))
+    X = property(lambda self: self.__getitem__("X"), lambda self, value: self.set_event("X", *value))
+    Y = property(lambda self: self.__getitem__("Y"), lambda self, value: self.set_event("Y", *value))
+    L1 = property(lambda self: self.__getitem__("L1"), lambda self, value: self.set_event("L1", *value))
+    L2 = property(lambda self: self.__getitem__("L2"), lambda self, value: self.set_event("L2", *value))
+    L3 = property(lambda self: self.__getitem__("L3"), lambda self, value: self.set_event("L3", *value))
+    R1 = property(lambda self: self.__getitem__("R1"), lambda self, value: self.set_event("R1", *value))
+    R2 = property(lambda self: self.__getitem__("R2"), lambda self, value: self.set_event("R2", *value))
+    R3 = property(lambda self: self.__getitem__("R3"), lambda self, value: self.set_event("R3", *value))
+    SELECT = property(lambda self: self.__getitem__("SELECT"), lambda self, value: self.set_event("SELECT", *value))
+    START = property(lambda self: self.__getitem__("START"), lambda self, value: self.set_event("START", *value))
+    UP = property(lambda self: self.__getitem__("UP"), lambda self, value: self.set_event("UP", *value))
+    DOWN = property(lambda self: self.__getitem__("DOWN"), lambda self, value: self.set_event("DOWN", *value))
+    LEFT = property(lambda self: self.__getitem__("LEFT"), lambda self, value: self.set_event("LEFT", *value))
+    RIGHT = property(lambda self: self.__getitem__("RIGHT"), lambda self, value: self.set_event("RIGHT", *value))
+    AXIS_LEFT_X = property(lambda self: self.__getitem__("AXIS_LEFT_X"), lambda self, value: self.set_event("AXIS_LEFT_X", *value))
+    AXIS_LEFT_Y = property(lambda self: self.__getitem__("AXIS_LEFT_Y"), lambda self, value: self.set_event("AXIS_LEFT_Y", *value))
+    AXIS_RIGHT_X = property(lambda self: self.__getitem__("AXIS_RIGHT_X"), lambda self, value: self.set_event("AXIS_RIGHT_X", *value))
+    AXIS_RIGHT_Y = property(lambda self: self.__getitem__("AXIS_RIGHT_Y"), lambda self, value: self.set_event("AXIS_RIGHT_Y", *value))

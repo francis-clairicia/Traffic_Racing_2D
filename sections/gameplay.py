@@ -164,7 +164,12 @@ class Info(Text):
             raise TypeError("value must be an integer or a float")
         self.__value = value
         if self.__clock.elapsed_time(200):
-            msg = self.__title + "\n" + str(round(value, self.__round_n) if self.__round_n > 0 else round(value))
+            if self.__round_n:
+                value_format = "{" + ":.{n}f".format(n=self.__round_n) + "}"
+                value = value_format.format(value)
+            else:
+                value = str(round(value))
+            msg = self.__title + "\n" + value
             if len(self.__extension) > 0:
                 msg += " " + self.__extension
             self.message = msg
@@ -173,8 +178,8 @@ class Pause(Window):
     def __init__(self, master):
         Window.__init__(self, master=master, bg_music=master.bg_music)
         self.bind_key(pygame.K_ESCAPE, lambda event: self.stop())
-        self.bind_joystick_button(0, "START", lambda event: self.stop())
-        self.bind_joystick_button(0, "B", lambda event: self.stop())
+        self.bind_joystick(0, "START", lambda event: self.stop())
+        self.bind_joystick(0, "B", lambda event: self.stop())
         self.master = master
         self.bg = RectangleShape(*self.size, (0, 0, 0, 170))
         params_for_all_buttons = {
@@ -238,7 +243,7 @@ class EndGame(Window):
         self.text_distance = Text(f"Distance: {distance}", font, WHITE)
         self.img_green_arrow_distance = Image(RESOURCES.IMG["green_arrow"], height=40)
         self.text_money_distance = Text(money_distance, font, WHITE, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
-        self.text_time_100 = Text(f"Time up to 100km: {time_100}", font, WHITE)
+        self.text_time_100 = Text(f"Time up to 100: {time_100}", font, WHITE)
         self.img_green_arrow_time_100 = Image(RESOURCES.IMG["green_arrow"], height=40)
         self.text_money_time_100 = Text(money_time_100, font, WHITE, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
         self.text_time_opposite = Text(f"Time in opposite side: {time_opposite}", font, WHITE)
@@ -305,7 +310,7 @@ class Gameplay(Window):
     def __init__(self, car_id: int, env: str):
         Window.__init__(self, bg_color=ENVIRONMENT[env], bg_music=RESOURCES.MUSIC["gameplay"])
         self.bind_key(pygame.K_ESCAPE, lambda event: self.pause())
-        self.bind_joystick_button(0, "START", lambda event: self.pause())
+        self.bind_joystick(0, "START", lambda event: self.pause())
 
         font = RESOURCES.FONT["cooperblack"]
 
@@ -446,8 +451,8 @@ class Gameplay(Window):
             for control, car_function in car_handling:
                 if self.keyboard.is_pressed(control["key"]):
                     car_function()
-                elif joystick[control["joy"]]:
-                    car_function(joystick[control["joy"]])
+                elif joystick.get_value(control["joy"]):
+                    car_function(joystick.get_value(control["joy"]))
             if SAVE["auto_acceleration"] is True:
                 self.car.speed_up()
         self.car.update(self.pixel_per_ms)
@@ -503,7 +508,7 @@ class Gameplay(Window):
             self.infos_score.color = YELLOW
             self.infos_score.shadow_color = BLACK
         self.infos_score.value += score_to_add * self.update_time / 1000
-        self.infos_speed.value = round(self.car.speed)
+        self.infos_speed.value = self.car.speed
         self.infos_distance.value += self.car.speed * self.pixel_per_ms / (1000 * 3.6)
 
     def update_background(self):
@@ -538,11 +543,13 @@ class Gameplay(Window):
                         car_2.speed = car_1.speed
                     elif (way in [3, 4]) and (car_1.speed > car_2.speed):
                         car_1.speed = car_2.speed
-        ratio = (-(self.car.speed / 250) + 2.12) * 1000
+        ratio = (3 - (round(self.infos_score.value) / 20000)) * 1000
         if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio) and (self.traffic.empty() or self.traffic[-1].right < self.right - 20):
             self.add_car_to_traffic()
 
     def add_car_to_traffic(self):
+        if len(self.traffic) >= 6:
+            return
         ways = list(range(4))
         score = round(self.infos_score.value)
         nb_cars_to_add = 1
@@ -558,6 +565,8 @@ class Gameplay(Window):
             car.move(left=self.right, centery=(self.road[car.way].bottom + self.road[car.way + 1].top) / 2)
             car.start_animation(loop=True)
             ways.remove(car.way)
+            if len(self.traffic) >= 6:
+                break
 
     def remove_car_from_traffic(self, car: TrafficCar):
         self.traffic.remove(car)
@@ -575,6 +584,8 @@ class Gameplay(Window):
         window.mainloop()
         if self.restart:
             self.traffic.clear()
-            self.car.left = 50
+            for way in self.ways:
+                way.clear()
+            self.car.move(left=50, centery=self.road.centery)
             self.car.restart()
             self.init_game()

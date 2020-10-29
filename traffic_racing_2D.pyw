@@ -5,10 +5,9 @@ import pygame
 from sections.garage import Garage
 from sections.options import Options
 from my_pygame import Window, Image, Button, RectangleShape, Text, ImageButton
-from my_pygame import ButtonListVertical
+from my_pygame import ButtonListVertical, DrawableListVertical
 from my_pygame import GREEN, GREEN_DARK, GREEN_LIGHT, YELLOW
 from my_pygame import RESOURCES
-from constants import ICON
 from save import SAVE
 
 class Credits(Window):
@@ -17,35 +16,31 @@ class Credits(Window):
         self.frame = RectangleShape(0.60 * self.width, 0.60 * self.height, GREEN, outline=3)
         title_font = ("calibri", 32, "bold")
         simple_font = ("calibri", 32)
-        self.all_text = all_text = list()
-        all_text.append(Text("Backgroun musics", title_font))
-        all_text.append(Text("by Eric Matyas: www.soundimage.org", simple_font))
-        all_text.append(Text("SFX", title_font))
-        all_text.append(Text("taken on Freesound.org", simple_font))
-        all_text.append(Text("Images", title_font))
-        all_text.append(Text("taken in Google Image\n(except the logo)", simple_font, justify=Text.T_CENTER))
-        self.objects.add(*all_text)
+        self.text = DrawableListVertical(offset=50)
+        self.text.add(
+            Text("Backgroun musics\nby Eric Matyas: www.soundimage.org", font=simple_font, justify=Text.T_CENTER),
+            Text("SFX\ntaken on Freesound.org", font=simple_font, justify=Text.T_CENTER),
+            Text("Images\ntaken in Google Image\n(except the logo)", font=simple_font, justify=Text.T_CENTER),
+        )
+        for text in self.text:
+            text.set_custom_line_font(0, title_font)
         self.button_red_cross = ImageButton(self, img=RESOURCES.IMG["red_cross"],
                                             active_img=RESOURCES.IMG["red_cross_hover"],
                                             hover_sound=RESOURCES.SFX["select"], on_click_sound=RESOURCES.SFX["back"],
                                             callback=self.stop, highlight_color=YELLOW)
-        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=self.button_red_cross.on_click_sound))
-        self.bind_joystick_button(0, "B", lambda event: self.stop(sound=self.button_red_cross.on_click_sound))
+        self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=RESOURCES.SFX["back"]))
+        self.bind_joystick(0, "B", lambda event: self.stop(sound=RESOURCES.SFX["back"]))
 
     def place_objects(self):
         self.frame.center = self.center
         self.button_red_cross.move(left=self.frame.left + 5, top=self.frame.top + 5)
-        for i, text in enumerate(self.all_text):
-            if i == 0:
-                text.move(centerx=self.frame.centerx, y=self.frame.y + 20)
-            else:
-                text.move(centerx=self.frame.centerx, y=self.all_text[i - 1].bottom + (40 if text.font.get_bold() else 0))
+        self.text.center = self.frame.center
 
 class TrafficRacing(Window):
     def __init__(self):
-        Window.__init__(self, flags=pygame.DOUBLEBUF|pygame.FULLSCREEN, bg_music=RESOURCES.MUSIC["menu"])
+        Window.__init__(self, flags=pygame.FULLSCREEN|pygame.HWSURFACE|pygame.DOUBLEBUF, bg_music=RESOURCES.MUSIC["menu"])
         self.set_title("Traffic Racing 2D")
-        self.set_icon(ICON)
+        self.set_icon(RESOURCES.IMG["icon"])
         self.set_fps(120)
         self.config_fps_obj(font=("calibri", 30))
         self.set_joystick(1)
