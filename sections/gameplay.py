@@ -390,10 +390,11 @@ class Gameplay(Window):
         self.init_game()
 
     def pause(self):
-        self.paused = True
-        self.car.stop_animation(reset=False)
-        for car in self.traffic:
-            car.stop_animation(reset=False)
+        if not self.count_down.is_shown():
+            self.paused = True
+            self.car.stop_animation(reset=False)
+            for car in self.traffic:
+                car.stop_animation(reset=False)
         pause = Pause(self)
         pause.mainloop()
         if self.loop and not self.count_down.is_shown():
