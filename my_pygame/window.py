@@ -70,23 +70,6 @@ class Window:
         )
         for event in focus_event:
             self.bind_event(event, self.handle_focus)
-        mouse_hide_event = (
-            pygame.KEYDOWN,
-            pygame.KEYUP,
-            pygame.JOYBUTTONDOWN,
-            pygame.JOYBUTTONUP,
-            pygame.JOYAXISMOTION,
-            pygame.JOYHATMOTION
-        )
-        mouse_show_event = (
-            pygame.MOUSEBUTTONDOWN,
-            pygame.MOUSEBUTTONUP,
-            pygame.MOUSEMOTION,
-            pygame.MOUSEWHEEL,
-        )
-        for event_list, status in zip((mouse_show_event, mouse_hide_event), (True, False)):
-            for event in event_list:
-                self.bind_event(event, lambda event, state=status: pygame.mouse.set_visible(state))
         self.__key_enabled = True
         self.__screenshot = False
         self.bind_key(pygame.K_F11, lambda event: self.screenshot())

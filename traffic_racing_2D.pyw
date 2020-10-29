@@ -46,6 +46,24 @@ class TrafficRacing(Window):
         self.set_joystick(1)
         self.joystick[0].set_button_axis(False)
         self.bind_key(pygame.K_ESCAPE, lambda key: self.stop())
+        mouse_hide_event = (
+            pygame.KEYDOWN,
+            pygame.KEYUP,
+            pygame.JOYBUTTONDOWN,
+            pygame.JOYBUTTONUP,
+            pygame.JOYAXISMOTION,
+            pygame.JOYHATMOTION
+        )
+        mouse_show_event = (
+            pygame.MOUSEBUTTONDOWN,
+            pygame.MOUSEBUTTONUP,
+            pygame.MOUSEMOTION,
+            pygame.MOUSEWHEEL,
+        )
+        for event_list, status in zip((mouse_show_event, mouse_hide_event), (True, False)):
+            for event in event_list:
+                self.bind_event_all_window(event, lambda event, state=status: pygame.mouse.set_visible(state))
+
         self.bg = Image(RESOURCES.IMG["background"], width=self.width)
         self.logo = Image(RESOURCES.IMG["logo"])
         params_for_all_buttons = {
