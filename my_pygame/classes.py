@@ -587,7 +587,7 @@ class Scale(Clickable, ProgressBar):
         master.bind_key(pygame.K_KP_MINUS, self.key_event, hold=True)
         master.bind_key(pygame.K_KP_PLUS, self.key_event, hold=True)
 
-    def mouse_move_event(self, mouse_pos) -> None:
+    def on_mouse_motion(self, mouse_pos: Tuple[int, int]) -> None:
         if self.active:
             self.percent = (mouse_pos[0] - self.x) / self.width
             self.call_update()
@@ -609,10 +609,7 @@ class Scale(Clickable, ProgressBar):
 
     def on_click_down(self, event: Event) -> None:
         if event.type == pygame.MOUSEBUTTONDOWN:
-            self.mouse_move_event(event.pos)
-
-    def on_mouse_motion(self, mouse_pos: Tuple[int, int]) -> None:
-        self.mouse_move_event(mouse_pos)
+            self.on_mouse_motion(event.pos)
 
     def call_update(self):
         if hasattr(self, "callback") and callable(self.callback):
