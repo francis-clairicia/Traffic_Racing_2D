@@ -220,9 +220,7 @@ class Focusable:
         if not self.has_focus():
             return
         if hasattr(self, "rect"):
-            outline = getattr(self, "outline") if hasattr(self, "outline") else self.highlight_thickness
-            if outline <= 0:
-                outline = self.highlight_thickness
+            outline = getattr(self, "outline", self.highlight_thickness)
             if outline > 0:
                 pygame.draw.rect(surface, self.highlight_color, getattr(self, "rect"), width=outline)
 

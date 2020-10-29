@@ -177,11 +177,12 @@ class Window:
         self.set_grid()
         if Focusable.MODE != Focusable.MODE_MOUSE and self.objects.focus_get() is None:
             self.objects.focus_next()
+        self.fps_update()
         while self.loop:
             for callback in [c for c in self.callback_after if c.can_call()]:
                 callback()
                 self.callback_after.remove(callback)
-            self.fps_update()
+            self.main_clock.tick(Window.__fps)
             self.update()
             self.keyboard.update()
             self.draw_and_refresh()
@@ -243,9 +244,9 @@ class Window:
         return Window.__show_fps
 
     def fps_update(self):
-        self.main_clock.tick(Window.__fps)
         if Window.__show_fps:
             Window.__fps_obj.message = f"{round(self.main_clock.get_fps())} FPS"
+        self.after(500, self.fps_update)
 
     def show_all(self, without=tuple()):
         for obj in self.objects:

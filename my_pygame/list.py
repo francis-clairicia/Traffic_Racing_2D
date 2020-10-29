@@ -6,11 +6,12 @@ from .abstract import Drawable, Focusable
 from .classes import Button, RectangleShape
 
 class DrawableList:
-    def __init__(self, bg_color=None):
+    def __init__(self, bg_color=None, draw=True):
         self.__bg_color = bg_color
         self.__list = list()
         self.__index = -1
         self.__rect = pygame.Rect(0, 0, 0, 0)
+        self.__draw = draw
 
     def __len__(self) -> int:
         return len(self.__list)
@@ -84,7 +85,7 @@ class DrawableList:
             self.__index = size - 1
 
     def draw(self, surface: pygame.Surface) -> None:
-        if self.is_shown():
+        if self.is_shown() and self.__draw:
             if isinstance(self.__bg_color, tuple):
                 pygame.draw.rect(surface, self.__bg_color, self.rect)
             for obj in self.__list:

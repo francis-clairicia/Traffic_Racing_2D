@@ -83,7 +83,7 @@ class PlayerCar(Car):
             elif self.__speed_up:
                 self.speed += (self.__speed_time * 100 / self.acceleration) * self.__speed_up_offset
             else:
-                ratio = 5 # percent
+                ratio = 10 # percent
                 lost_speed = self.speed * ratio / 100
                 self.speed -= self.__speed_time * lost_speed / 1000
                 if self.speed < 30:
@@ -141,13 +141,13 @@ class TrafficCar(Car):
         self.speed = (35, 40, 50, 60)[car_id - 1]
 
     def update(self, *args, **kwargs):
-        player_car_speed, pixel_per_ms = args
-        x = (self.speed * self.side - player_car_speed) * pixel_per_ms
+        pixel_per_ms = args[0]
+        x = (self.speed * self.side) * pixel_per_ms
         self.move_ip(x, 0)
 
 class Info(Text):
-    def __init__(self, title: str, *args, extension="", round_n=1, **kwargs):
-        Text.__init__(self, str(), *args, **kwargs)
+    def __init__(self, title: str, extension="", round_n=1, **kwargs):
+        Text.__init__(self, **kwargs)
         self.__title = title
         self.__extension = extension
         self.__round_n = round_n
@@ -368,10 +368,19 @@ class Gameplay(Window):
         self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow=True, shadow_x=5, shadow_y=5)
         self.last_car_way = 0
 
+        # Background
+        self.background = DrawableList(draw=False)
+        self.background.add(
+            self.env_top,
+            self.env_bottom,
+            *self.white_bands,
+            self.traffic
+        )
+
         # Default values
         self.update_clock = Clock()
         self.update_time = 15 #ms
-        self.pixel_per_sec = 5 # For 1km/h
+        self.pixel_per_sec = 6 # For 1km/h
         self.pixel_per_ms = self.pixel_per_sec * self.update_time / 1000
         self.paused = False
         self.go_to_garage = self.restart = False
@@ -513,15 +522,13 @@ class Gameplay(Window):
 
     def update_background(self):
         offset = self.speed * self.pixel_per_ms
-        obj_to_delete = list()
+        self.background.move_ip(-offset, 0)
         for white_bands_list in self.white_bands:
-            white_bands_list.move_ip(-offset, 0)
             if white_bands_list[0].right <= 0:
                 white_bands_list.remove_from_index(0)
             if white_bands_list[-1].right < self.right:
                 white_bands_list.add(RectangleShape(*white_bands_list[-1].size, WHITE))
         for env in (self.env_top, self.env_bottom):
-            env.move_ip(-offset, 0)
             img = env[0]
             if img.right <= 0:
                 img.move(left=env[-1].right + env.offset)
@@ -531,7 +538,7 @@ class Gameplay(Window):
 
     def update_traffic(self):
         for car in self.traffic.drawable:
-            car.update(self.speed, self.pixel_per_ms)
+            car.update(self.pixel_per_ms)
             if car.right < 0:
                 self.remove_car_from_traffic(car)
         for way, car_list in enumerate(self.ways, 1):
@@ -543,9 +550,10 @@ class Gameplay(Window):
                         car_2.speed = car_1.speed
                     elif (way in [3, 4]) and (car_1.speed > car_2.speed):
                         car_1.speed = car_2.speed
-        ratio = (3 - (round(self.infos_score.value) / 20000)) * 1000
-        if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio) and (self.traffic.empty() or self.traffic[-1].right < self.right - 20):
-            self.add_car_to_traffic()
+        ratio = (2 - (round(self.infos_score.value) / 20000)) * 1000
+        if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio):
+            if self.traffic.empty() or max(self.traffic, key=lambda car: car.right).right < self.right - 20:
+                self.add_car_to_traffic()
 
     def add_car_to_traffic(self):
         if len(self.traffic) >= 6:
@@ -583,9 +591,9 @@ class Gameplay(Window):
         window = EndGame(self, score, distance, time_100, time_opposite)
         window.mainloop()
         if self.restart:
-            self.traffic.clear()
             for way in self.ways:
                 way.clear()
+            self.traffic.clear()
             self.car.move(left=50, centery=self.road.centery)
             self.car.restart()
             self.init_game()
