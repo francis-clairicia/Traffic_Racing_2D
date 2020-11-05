@@ -2,15 +2,15 @@
 
 from typing import Sequence, Any
 import pygame
-from .abstract import Drawable, Focusable
-from .classes import Button, RectangleShape
+from .drawable import Drawable
+from .focusable import Focusable
+from .shape import RectangleShape
 
 class DrawableList:
     def __init__(self, bg_color=None, draw=True):
         self.__bg_color = bg_color
         self.__list = list()
         self.__index = -1
-        self.__rect = pygame.Rect(0, 0, 0, 0)
         self.__draw = draw
 
     def __len__(self) -> int:
@@ -27,8 +27,13 @@ class DrawableList:
 
     @property
     def rect(self) -> pygame.Rect:
-        self.__update_rect()
-        return self.__rect
+        left = min((obj.left for obj in self.__list), default=0)
+        right = max((obj.right for obj in self.__list), default=0)
+        top = min((obj.top for obj in self.__list), default=0)
+        bottom = max((obj.bottom for obj in self.__list), default=0)
+        width = right - left
+        height = bottom - top
+        return pygame.Rect(left, top, width, height)
 
     @property
     def end(self) -> int:
@@ -38,8 +43,8 @@ class DrawableList:
     def bg_color(self) -> tuple:
         return self.__bg_color
 
-    def add(self, *obj_list: Drawable) -> None:
-        for obj in obj_list:
+    def add(self, obj: Drawable, *objs: Drawable) -> None:
+        for obj in [obj, *objs]:
             if isinstance(obj, (Drawable, DrawableList)) and obj not in self.__list:
                 self.__list.append(obj)
 
@@ -70,15 +75,6 @@ class DrawableList:
             new_pos += self.__list.index(relative_to)
         self.__list.insert(new_pos, obj)
 
-    def __update_rect(self) -> None:
-        left = min((obj.left for obj in self.__list), default=0)
-        right = max((obj.right for obj in self.__list), default=0)
-        top = min((obj.top for obj in self.__list), default=0)
-        bottom = max((obj.bottom for obj in self.__list), default=0)
-        width = right - left
-        height = bottom - top
-        self.__rect = pygame.Rect(left, top, width, height)
-
     def __update_index(self) -> None:
         size = len(self.focusable)
         if self.__index >= size:
@@ -86,12 +82,20 @@ class DrawableList:
 
     def draw(self, surface: pygame.Surface) -> None:
         if self.is_shown() and self.__draw:
+            self.before_drawing(surface)
             if isinstance(self.__bg_color, tuple):
                 pygame.draw.rect(surface, self.__bg_color, self.rect)
             for obj in self.__list:
                 if isinstance(obj, Focusable):
                     obj.focus_update()
                 obj.draw(surface)
+            self.after_drawing(surface)
+
+    def before_drawing(self, surface: pygame.Surface) -> None:
+        pass
+
+    def after_drawing(self, surface: pygame.Surface) -> None:
+        pass
 
     def update(self, *args, **kwargs):
         for obj in self.__list:
@@ -142,6 +146,17 @@ class DrawableList:
             self.__index = self.focusable.index(obj)
         else:
             self.__index = -1
+
+    def remove_focus(self, obj: Focusable):
+        if obj not in self.focusable:
+            return
+        obj.focus = False
+        if self.focus_get() == obj:
+            self.set_focus(None)
+
+    def focus_mode_update(self):
+        if Focusable.MODE != Focusable.MODE_MOUSE and self.focus_get() is None:
+            self.focus_next()
 
     def show(self):
         for obj in self.__list:
@@ -214,22 +229,35 @@ class AbstractDrawableListAligned(DrawableList):
     HORIZONTAL = "horizontal"
     VERTICAL = "vertical"
 
-    def __init__(self, offset: int, orient: str, bg_color=None):
-        DrawableList.__init__(self, bg_color=bg_color)
+    def __init__(self, offset: int, orient: str, bg_color=None, draw=True, justify="center"):
+        DrawableList.__init__(self, bg_color=bg_color, draw=draw)
         self.__background = Drawable()
         self.offset = offset
         values = {
-            AbstractDrawableListAligned.HORIZONTAL: ("left", "right", "centery"),
-            AbstractDrawableListAligned.VERTICAL: ("top", "bottom", "centerx")
+            AbstractDrawableListAligned.HORIZONTAL: ("left", "right",),
+            AbstractDrawableListAligned.VERTICAL: ("top", "bottom")
         }
-        self.__start, self.__end, self.__center = values[orient]
+        self.__start, self.__end = values[orient]
+        justify_dict = {
+            AbstractDrawableListAligned.HORIZONTAL: {
+                "top": "top",
+                "bottom": "bottom",
+                "center": "centery"
+            },
+            AbstractDrawableListAligned.VERTICAL: {
+                "left": "left",
+                "right": "right",
+                "center": "centerx"
+            }
+        }
+        self.__justify = justify_dict[orient][justify]
 
-    def add(self, *obj: Drawable) -> None:
-        DrawableList.add(self, *obj)
+    def add(self, obj: Drawable, *objs: Drawable) -> None:
+        DrawableList.add(self, obj, *objs)
         self.__align_all_objects()
 
-    def remove(self, *obj: Drawable) -> None:
-        DrawableList.remove(self, *obj)
+    def remove(self, obj: Drawable, *objs: Drawable) -> None:
+        DrawableList.remove(self, obj, *objs)
         self.__align_all_objects()
 
     def remove_from_index(self, index: int) -> None:
@@ -241,33 +269,34 @@ class AbstractDrawableListAligned(DrawableList):
             self.__background.set_size(self.size)
             self.__background.move(**kwargs)
             self.list[0].move(**{self.__start: self.__background[self.__start]})
-            self.list[0].move(**{self.__center: self.__background[self.__center]})
+            self.list[0].move(**{self.__justify: self.__background[self.__justify]})
             self.__align_all_objects()
+            DrawableList.move(self)
 
     def __align_all_objects(self):
         for obj_1, obj_2 in zip(self.list[:-1], self.list[1:]):
             obj_2.move(**{self.__start: getattr(obj_1.rect, self.__end, 0) + self.offset})
         for obj in self.list:
-            obj.move(**{self.__center: getattr(self.list[0].rect, self.__center, 0)})
+            obj.move(**{self.__justify: getattr(self.list[0].rect, self.__justify, 0)})
 
 class DrawableListVertical(AbstractDrawableListAligned):
 
-    def __init__(self, offset: int, bg_color=None):
-        AbstractDrawableListAligned.__init__(self, offset, AbstractDrawableListAligned.VERTICAL, bg_color=bg_color)
+    def __init__(self, offset: int, bg_color=None, draw=True, justify="center"):
+        AbstractDrawableListAligned.__init__(self, offset, AbstractDrawableListAligned.VERTICAL, bg_color=bg_color, draw=draw, justify=justify)
 
 class DrawableListHorizontal(AbstractDrawableListAligned):
 
-    def __init__(self, offset: int, bg_color=None):
-        AbstractDrawableListAligned.__init__(self, offset, AbstractDrawableListAligned.HORIZONTAL, bg_color=bg_color)
+    def __init__(self, offset: int, bg_color=None, draw=True, justify="center"):
+        AbstractDrawableListAligned.__init__(self, offset, AbstractDrawableListAligned.HORIZONTAL, bg_color=bg_color, draw=draw, justify=justify)
 
 class ButtonListVertical(DrawableListVertical):
 
-    def add(self, *buttons: Button) -> None:
-        DrawableListVertical.add(self, *buttons)
+    def add(self, button: Focusable, *buttons: Focusable) -> None:
+        DrawableListVertical.add(self, button, *buttons)
         self.__handle_buttons()
 
-    def remove(self, *buttons: Button) -> None:
-        DrawableListVertical.remove(self, *buttons)
+    def remove(self, button: Focusable, *buttons: Focusable) -> None:
+        DrawableListVertical.remove(self, button, *buttons)
         self.__handle_buttons()
 
     def remove_from_index(self, index: int) -> None:
@@ -278,12 +307,12 @@ class ButtonListVertical(DrawableListVertical):
         if len(self.list) > 0:
             for i, button in enumerate(self.list):
                 if i == 0:
-                    button.remove_obj_on_side(Button.ON_TOP)
+                    button.remove_obj_on_side(Focusable.ON_TOP)
                 else:
                     prev = self.list[i - 1]
                     prev.set_obj_on_side(on_bottom=button)
                     button.set_obj_on_side(on_top=prev)
-                button.remove_obj_on_side(Button.ON_BOTTOM)
+                button.remove_obj_on_side(Focusable.ON_BOTTOM)
             size = (
                 max(button.width for button in self.list),
                 max(button.height for button in self.list)
@@ -300,21 +329,21 @@ class ButtonListVertical(DrawableListVertical):
 
     def remove_obj_on_side(self, *sides: str) -> None:
         if len(self.list) > 0:
-            if Button.ON_TOP in sides:
-                self.list[0].remove_obj_on_side(Button.ON_TOP)
-            if Button.ON_BOTTOM in sides:
-                self.list[-1].remove_obj_on_side(Button.ON_BOTTOM)
+            if Focusable.ON_TOP in sides:
+                self.list[0].remove_obj_on_side(Focusable.ON_TOP)
+            if Focusable.ON_BOTTOM in sides:
+                self.list[-1].remove_obj_on_side(Focusable.ON_BOTTOM)
             for obj in self.list:
-                obj.remove_obj_on_side(*filter(lambda side: side in (Button.ON_LEFT, Button.ON_RIGHT), sides))
+                obj.remove_obj_on_side(*filter(lambda side: side in (Focusable.ON_LEFT, Focusable.ON_RIGHT), sides))
 
 class ButtonListHorizontal(DrawableListHorizontal):
 
-    def add(self, *buttons: Button) -> None:
-        DrawableListHorizontal.add(self, *buttons)
+    def add(self, button: Focusable, *buttons: Focusable) -> None:
+        DrawableListHorizontal.add(self, button, *buttons)
         self.__handle_buttons()
 
-    def remove(self, *buttons: Button) -> None:
-        DrawableListHorizontal.remove(self, *buttons)
+    def remove(self, button: Focusable, *buttons: Focusable) -> None:
+        DrawableListHorizontal.remove(self, button, *buttons)
         self.__handle_buttons()
 
     def remove_from_index(self, index: int) -> None:
@@ -325,12 +354,12 @@ class ButtonListHorizontal(DrawableListHorizontal):
         if len(self.list) > 0:
             for i, button in enumerate(self.list):
                 if i == 0:
-                    button.remove_obj_on_side(Button.ON_LEFT)
+                    button.remove_obj_on_side(Focusable.ON_LEFT)
                 else:
                     prev = self.list[i - 1]
                     prev.set_obj_on_side(on_right=button)
                     button.set_obj_on_side(on_left=prev)
-                button.remove_obj_on_side(Button.ON_RIGHT)
+                button.remove_obj_on_side(Focusable.ON_RIGHT)
             size = (
                 max(button.width for button in self.list),
                 max(button.height for button in self.list)
@@ -347,9 +376,9 @@ class ButtonListHorizontal(DrawableListHorizontal):
 
     def remove_obj_on_side(self, *sides: str) -> None:
         if len(self.list) > 0:
-            if Button.ON_LEFT in sides:
-                self.list[0].remove_obj_on_side(Button.ON_LEFT)
-            if Button.ON_RIGHT in sides:
-                self.list[-1].remove_obj_on_side(Button.ON_RIGHT)
+            if Focusable.ON_LEFT in sides:
+                self.list[0].remove_obj_on_side(Focusable.ON_LEFT)
+            if Focusable.ON_RIGHT in sides:
+                self.list[-1].remove_obj_on_side(Focusable.ON_RIGHT)
             for obj in self.list:
-                obj.remove_obj_on_side(*filter(lambda side: side in (Button.ON_TOP, Button.ON_BOTTOM), sides))
+                obj.remove_obj_on_side(*filter(lambda side: side in (Focusable.ON_TOP, Focusable.ON_BOTTOM), sides))

@@ -54,7 +54,7 @@ class Color(object):
         if not isinstance(hex_code, str):
             raise TypeError("hex_code must be a str")
         if hex_code[0] != "#":
-            raise ValueError("hex_code must start with a '#' character")
+            raise ValueError("hex_code must be formatted by #RRGGBB")
         hex_code = hex_code[1:]
         if len(hex_code) != 6:
             raise ValueError("hex_code must be formatted by #RRGGBB")

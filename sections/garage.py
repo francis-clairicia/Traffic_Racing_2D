@@ -10,7 +10,8 @@ from .gameplay import Gameplay, format_number
 
 class CarViewer(Clickable, Image):
     def __init__(self, master, car_id: int, **kwargs):
-        Image.__init__(self, RESOURCES.IMG["garage_cars"][car_id], height=150)
+        self.__height = 150
+        Image.__init__(self, RESOURCES.IMG["garage_cars"][car_id], height=self.__height)
         Clickable.__init__(self, master, **kwargs, highlight_thickness=0)
 
         self.__id = car_id
@@ -43,7 +44,7 @@ class CarViewer(Clickable, Image):
             self.__id = 1
         elif self.__id > len(self):
             self.__id = len(self)
-        self.load(RESOURCES.IMG["garage_cars"][self.__id], keep_height=True)
+        self.load(RESOURCES.IMG["garage_cars"][self.__id], height=self.__height)
 
     @property
     def max_speed(self) -> int:
@@ -170,9 +171,9 @@ class EnvironmentChooser(Window):
         self.texts = DrawableList()
         for name, color in ENVIRONMENT.items():
             b = Button(
-                self, img=Image(RESOURCES.IMG[name], width=180, height=180), compound="center",
+                self, img=Image(RESOURCES.IMG[name], max_width=180, max_height=180), compound="center",
                 outline=3, callback=lambda env=name: self.play(env), bg=color,
-                hover_bg=None, active_bg=change_brightness(color, -20),
+                hover_bg=change_brightness(color, 20), active_bg=change_brightness(color, -20),
                 hover_sound=RESOURCES.SFX["select"], on_click_sound=RESOURCES.SFX["validate"], highlight_color=YELLOW
             )
             b.set_size(200)
@@ -261,7 +262,7 @@ class Garage(Window):
             price = self.car_viewer["price"]
             if isinstance(price, int):
                 self.button_price.show()
-                self.button_price.set_text(format_number(price))
+                self.button_price.text = format_number(price)
                 self.button_price.state = Button.NORMAL if SAVE["money"] >= price else Button.DISABLED
             else:
                 self.button_price.hide()

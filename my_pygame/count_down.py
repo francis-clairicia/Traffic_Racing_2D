@@ -1,31 +1,51 @@
 # -*- coding: Utf-8 -*
 
-from .classes import Text
+from .text import Text
+from .window import Window
 
 class CountDown(Text):
 
     __slots__ = ("__seconds", "__master", "__callback")
 
-    def __init__(self, master, seconds: int, *args, **kwargs):
+    def __init__(self, master: Window, seconds: int, format="{seconds}", *args, **kwargs):
         Text.__init__(self, str(), *args, **kwargs)
-        self.__seconds = seconds
+        self.__seconds = int(seconds)
+        self.__time = 0
+        self.__show = True
+        self.__started = False
         self.__master = master
         self.__callback = None
-
-    def start(self, at_end=None):
-        self.show()
-        for i in range(self.__seconds):
-            self.__master.after(1000 * i, lambda value=self.__seconds - i: self.__set_value(value))
-        self.__master.after(1000 * self.__seconds, self.__end)
-        if callable(at_end):
-            self.__callback = at_end
-        else:
-            self.__callback = None
-
-    def __set_value(self, value: int) -> None:
-        self.message = value
-
-    def __end(self):
+        self.__window_callback = None
+        self.__format = format
         self.hide()
-        if self.__callback:
+
+    def start(self, at_end=None, show=True) -> None:
+        self.__show = bool(show)
+        if self.__show:
+            self.show()
+        self.__time = self.__seconds
+        self.__started = True
+        self.__callback = at_end if callable(at_end) else None
+        self.__update_count()
+
+    def stop(self) -> None:
+        self.__started = False
+        self.__master.remove_window_callback(self.__window_callback)
+
+    def started(self) -> bool:
+        return self.__started
+
+    def __update_count(self) -> None:
+        if not self.__started:
+            return
+        if self.__time > 0:
+            self.message = self.__format.format(seconds=self.__time)
+            self.__window_callback = self.__master.after(1000, self.__update_count)
+            self.__time -= 1
+        else:
+            self.__end()
+
+    def __end(self) -> None:
+        self.hide()
+        if callable(self.__callback):
             self.__callback()

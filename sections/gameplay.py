@@ -17,7 +17,8 @@ def format_number(number: float) -> str:
 
 class Car(Sprite):
     def __init__(self, img_list):
-        Sprite.__init__(self, *img_list, height=55)
+        Sprite.__init__(self)
+        self.add_sprite_list("car", img_list, set_sprite_list=True, height=55)
         self.speed = 30
 
     @property
@@ -49,7 +50,7 @@ class Car(Sprite):
             if not self.animated():
                 self.start_animation(loop=True)
         else:
-            self.stop_animation(reset=False)
+            self.stop_animation()
 
 class PlayerCar(Car):
     def __init__(self, car_id: int):
@@ -365,7 +366,7 @@ class Gameplay(Window):
                 self.sprites_traffic_cars[side][car_id] = img_list
         self.clock_traffic = Clock()
         self.img_crash = Image(RESOURCES.IMG["crash"], size=150)
-        self.count_down = CountDown(self, 3, (font, 90), YELLOW, shadow=True, shadow_x=5, shadow_y=5)
+        self.count_down = CountDown(self, 3, font=(font, 90), color=YELLOW, shadow=True, shadow_x=5, shadow_y=5)
         self.last_car_way = 0
 
         # Background
@@ -392,9 +393,9 @@ class Gameplay(Window):
     def pause(self):
         if not self.count_down.is_shown():
             self.paused = True
-            self.car.stop_animation(reset=False)
+            self.car.stop_animation()
             for car in self.traffic:
-                car.stop_animation(reset=False)
+                car.stop_animation()
         pause = Pause(self)
         pause.mainloop()
         if self.loop and not self.count_down.is_shown():
@@ -403,9 +404,9 @@ class Gameplay(Window):
 
     def return_to_game(self):
         self.paused = False
-        self.car.start_animation(loop=True)
+        self.car.restart_animation()
         for car in self.traffic:
-            car.start_animation(loop=True)
+            car.restart_animation()
         self.clock_traffic.tick()
         self.clock_time_100.tick()
         self.clock_time_opposite.tick()
@@ -583,7 +584,7 @@ class Gameplay(Window):
 
     def end_game(self):
         for car in self.traffic:
-            car.stop_animation(reset=False)
+            car.stop_animation()
         self.crashed_car = None
         score = round(self.infos_score.value)
         distance = round(self.infos_distance.value, 1)

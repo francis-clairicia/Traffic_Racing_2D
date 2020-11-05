@@ -6,7 +6,9 @@ from math import sqrt
 from ..window import Window, RESOURCES
 from ..path import set_constant_directory, set_constant_file
 from ..list import DrawableListVertical
-from ..classes import Text, Image, RectangleShape, CircleShape
+from ..text import Text
+from ..image import Image
+from ..shape import RectangleShape, CircleShape
 from ..colors import WHITE, BLACK
 from ..joystick import Joystick
 
@@ -181,7 +183,7 @@ class GamepadViewer(Window):
             self.set_fps(60)
             self.config_fps_obj(font=font, color=BLACK)
         if not self.joystick:
-            self.set_joystick(1)
+            self.joystick.set(1)
         if isinstance(master, Window):
             self.bg_music = master.bg_music
             self.bg = RectangleShape(self.width, self.height, (0, 0, 0, 170))

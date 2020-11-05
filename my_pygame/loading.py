@@ -1,7 +1,8 @@
 # -*- coding: Utf-8 -*
 
 from .window import Window
-from .classes import Text, RectangleShape
+from .text import Text
+from .shape import RectangleShape
 from .colors import WHITE, BLACK
 
 class Loading(Window):

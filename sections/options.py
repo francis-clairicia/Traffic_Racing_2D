@@ -105,7 +105,7 @@ class Options(Window):
         self.scale_music = Scale(
             self, **params_for_all_scales, **params_for_all_buttons,
             height=self.cb_music.height, default=Window.music_volume() * 100,
-            callback=lambda self=self: self.set_music_volume(self.scale_music.percent)
+            callback=lambda value, percent: Window.set_music_volume(percent)
         )
         self.text_sound = Text("SFX:", self.options_font)
         self.cb_sound = CheckBox(
@@ -116,7 +116,7 @@ class Options(Window):
         self.scale_sound = Scale(
             self, **params_for_all_scales, **params_for_all_buttons,
             height=self.cb_sound.height, default=Window.sound_volume() * 100,
-            callback=lambda self=self: self.set_sound_volume(self.scale_sound.percent)
+            callback=lambda value, percent: Window.set_sound_volume(percent)
         )
         self.text_fps = Text("FPS:", self.options_font)
         self.cb_show_fps = CheckBox(
@@ -183,11 +183,11 @@ class Options(Window):
             self.button_change_page.set_obj_on_side(on_top=self.cb_show_fps, on_left=self.button_reset)
         elif self.page == 2:
             self.text_acceleration.show()
-            self.button_auto_acceleration.set_text("Automatique" if SAVE["auto_acceleration"] else "Manuel")
+            self.button_auto_acceleration.text = "Automatique" if SAVE["auto_acceleration"] else "Manuel"
             self.button_auto_acceleration.show()
             control_text_format = "Key: {key}\nJoystick: {joy}"
             if not SAVE["auto_acceleration"]:
-                self.button_acceleration.set_text(control_text_format.format(**SAVE["controls"]["speed_up"]))
+                self.button_acceleration.text = control_text_format.format(**SAVE["controls"]["speed_up"])
                 self.button_acceleration.move(left=self.button_auto_acceleration.right + 10, centery=self.button_auto_acceleration.centery)
                 self.button_acceleration.show()
                 self.button_auto_acceleration.set_obj_on_side(on_right=self.button_acceleration)
@@ -200,7 +200,7 @@ class Options(Window):
             ]
             for text, button, action in fields:
                 text.show()
-                button.set_text(control_text_format.format(**SAVE["controls"][action]))
+                button.text = control_text_format.format(**SAVE["controls"][action])
                 button.show()
             self.button_back.set_obj_on_side(on_bottom=self.button_auto_acceleration, on_right=self.button_auto_acceleration)
             self.button_change_page.set_obj_on_side(on_top=self.button_move_down, on_left=self.button_move_down)

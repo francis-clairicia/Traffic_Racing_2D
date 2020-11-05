@@ -13,7 +13,7 @@ def find_in_iterable(iterable, *key_before, valid_callback=None):
             yield from find_in_iterable(value, *key_before, index, valid_callback=valid_callback)
     else:
         value = iterable
-        if valid_callback is None or valid_callback(value):
+        if not callable(valid_callback) or valid_callback(value):
             yield key_before
 
 def travel_container(key_path: Tuple[Union[int, str], ...], container: Dict[str, Any]) -> Tuple[Union[int, str], Union[List[str], Dict[Any, str]]]:
@@ -22,8 +22,12 @@ def travel_container(key_path: Tuple[Union[int, str], ...], container: Dict[str,
     return key_path[-1], container
 
 def find_value_in_container(key_path: Tuple[Union[int, str], ...], container: Dict[str, Any]) -> Any:
-    key, container = travel_container(key_path, container)
-    return container[key]
+    try:
+        key, container = travel_container(key_path, container)
+        value = container[key]
+    except (IndexError, KeyError):
+        return None
+    return value
 
 class Resources:
 
@@ -49,9 +53,27 @@ class Resources:
         elif volume > 1:
             volume = 1
         for key_path in find_in_iterable(self.__sfx, valid_callback=lambda obj: isinstance(obj, pygame.mixer.Sound)):
-            sound_obj = find_value_in_container(key_path, self.__sfx)
+            sound_obj = self.get_sfx(*key_path)
             sound_obj.set_volume(volume if bool(state) is True else 0)
         return volume
+
+    def play_sfx(self, *key_path) -> (pygame.mixer.Channel, None):
+        sound = self.get_sfx(*key_path)
+        if sound is None:
+            return None
+        return sound.play()
+
+    def get_img(self, *key_path) -> pygame.Surface:
+        return find_value_in_container(key_path, self.__img)
+
+    def get_font(self, *key_path) -> str:
+        return find_value_in_container(key_path, self.__font)
+
+    def get_music(self, *key_path) -> str:
+        return find_value_in_container(key_path, self.__music)
+
+    def get_sfx(self, *key_path) -> pygame.mixer.Sound:
+        return find_value_in_container(key_path, self.__sfx)
 
     IMG = property(lambda self: self.__img, lambda self, value: self.__img.update(value if isinstance(value, dict) else dict()))
     FONT = property(lambda self: self.__font, lambda self, value: self.__font.update(value if isinstance(value, dict) else dict()))

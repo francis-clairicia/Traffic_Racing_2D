@@ -43,8 +43,7 @@ class TrafficRacing(Window):
         self.set_icon(RESOURCES.IMG["icon"])
         self.set_fps(120)
         self.config_fps_obj(font=("calibri", 30))
-        self.set_joystick(1)
-        self.joystick[0].set_button_axis(False)
+        self.joystick.set(1)
         self.bind_key(pygame.K_ESCAPE, lambda key: self.stop())
         mouse_hide_event = (
             pygame.KEYDOWN,
