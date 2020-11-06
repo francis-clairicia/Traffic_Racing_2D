@@ -1,14 +1,14 @@
 # -*- coding: Utf-8 -*
 
 import random
-from typing import Dict, Union
+from typing import Dict, List, Union, Iterator
 import pygame
 from my_pygame import Window, Drawable, RectangleShape, Text, Image, Button
 from my_pygame import DrawableList, DrawableListHorizontal, DrawableListVertical
 from my_pygame import ButtonListHorizontal, ButtonListVertical
 from my_pygame import Sprite, CountDown, Clock
 from my_pygame import GRAY, WHITE, BLACK, YELLOW, GREEN, GREEN_LIGHT, GREEN_DARK
-from constants import RESOURCES, ENVIRONMENT, CAR_INFOS
+from constants import RESOURCES, ENVIRONMENT, CAR_INFOS, NB_TRAFFIC_CARS
 from save import SAVE
 from .options import Options
 
@@ -145,6 +145,45 @@ class TrafficCar(Car):
         pixel_per_ms = args[0]
         x = (self.speed * self.side) * pixel_per_ms
         self.move_ip(x, 0)
+
+class TrafficCarList(DrawableList):
+    def __init__(self, nb_ways: int, max_nb_car: int):
+        DrawableList.__init__(self)
+        self.sprites_traffic_cars = dict()
+        for side, car_list in RESOURCES.IMG["traffic"].items():
+            self.sprites_traffic_cars[side] = dict()
+            for car_id, img_list in car_list.items():
+                self.sprites_traffic_cars[side][car_id] = img_list
+        self.nb_ways = nb_ways
+        self.max_nb_car = max_nb_car
+
+    def add_cars(self, master: Window, road: DrawableListVertical, score: int) -> None:
+        ways = list(range(self.nb_ways))
+        nb_cars_to_add = 1
+        for threshold in (5000, 12500):
+            if score >= threshold:
+                nb_cars_to_add += 1
+            else:
+                break
+        for _ in range(nb_cars_to_add):
+            if len(self) >= self.max_nb_car:
+                break
+            car = TrafficCar(self.sprites_traffic_cars, random.randint(1, NB_TRAFFIC_CARS), random.choice(ways))
+            car.move(left=master.right, centery=(road[car.way].bottom + road[car.way + 1].top) / 2)
+            car.start_animation(loop=True)
+            self.add(car)
+            ways.remove(car.way)
+
+    def way(self, index: int) -> Iterator[TrafficCar]:
+        return filter(lambda car: car.way == index, self.drawable)
+
+    @property
+    def ways(self) -> List[List[TrafficCar]]:
+        return [list(self.way(i + 1)) for i in range(self.nb_ways)]
+
+    @property
+    def last(self) -> TrafficCar:
+        return max(self.drawable, key=lambda car: car.right, default=None)
 
 class Info(Text):
     def __init__(self, title: str, extension="", round_n=1, **kwargs):
@@ -357,13 +396,7 @@ class Gameplay(Window):
 
         self.car = PlayerCar(car_id)
         self.speed = 0
-        self.ways = tuple(list() for _ in range(4))
-        self.traffic = DrawableList()
-        self.sprites_traffic_cars = dict()
-        for side, car_list in RESOURCES.IMG["traffic"].items():
-            self.sprites_traffic_cars[side] = dict()
-            for car_id, img_list in car_list.items():
-                self.sprites_traffic_cars[side][car_id] = img_list
+        self.traffic = TrafficCarList(nb_ways=4, max_nb_car=6)
         self.clock_traffic = Clock()
         self.img_crash = Image(RESOURCES.IMG["crash"], size=150)
         self.count_down = CountDown(self, 3, font=(font, 90), color=YELLOW, shadow=True, shadow_x=5, shadow_y=5)
@@ -542,8 +575,8 @@ class Gameplay(Window):
         for car in self.traffic.drawable:
             car.update(self.pixel_per_ms)
             if car.right < 0:
-                self.remove_car_from_traffic(car)
-        for way, car_list in enumerate(self.ways, 1):
+                self.traffic.remove(car)
+        for way, car_list in enumerate(self.traffic.ways, 1):
             for i in range(1, len(car_list)):
                 car_1 = car_list[i - 1]
                 car_2 = car_list[i]
@@ -554,33 +587,8 @@ class Gameplay(Window):
                         car_1.speed = car_2.speed
         ratio = (2 - (round(self.infos_score.value) / 20000)) * 1000
         if self.car.speed > 30 and self.clock_traffic.elapsed_time(ratio):
-            if self.traffic.empty() or max(self.traffic, key=lambda car: car.right).right < self.right - 20:
-                self.add_car_to_traffic()
-
-    def add_car_to_traffic(self):
-        if len(self.traffic) >= 6:
-            return
-        ways = list(range(4))
-        score = round(self.infos_score.value)
-        nb_cars_to_add = 1
-        for threshold in (5000, 12500):
-            if score >= threshold:
-                nb_cars_to_add += 1
-            else:
-                break
-        for _ in range(nb_cars_to_add):
-            car = TrafficCar(self.sprites_traffic_cars, random.randint(1, 4), random.choice(ways))
-            self.traffic.add(car)
-            self.ways[car.way].append(car)
-            car.move(left=self.right, centery=(self.road[car.way].bottom + self.road[car.way + 1].top) / 2)
-            car.start_animation(loop=True)
-            ways.remove(car.way)
-            if len(self.traffic) >= 6:
-                break
-
-    def remove_car_from_traffic(self, car: TrafficCar):
-        self.traffic.remove(car)
-        self.ways[car.way].remove(car)
+            if self.traffic.empty() or self.traffic.last.right < self.right - 20:
+                self.traffic.add_cars(self, self.road, round(self.infos_score.value))
 
     def end_game(self):
         for car in self.traffic:
@@ -593,8 +601,6 @@ class Gameplay(Window):
         window = EndGame(self, score, distance, time_100, time_opposite)
         window.mainloop()
         if self.restart:
-            for way in self.ways:
-                way.clear()
             self.traffic.clear()
             self.car.move(left=50, centery=self.road.centery)
             self.car.restart()

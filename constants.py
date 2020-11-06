@@ -38,8 +38,8 @@ RESOURCES.IMG = {
 #--- Voitures utilisables
 RESOURCES.IMG["garage_cars"] = dict()
 RESOURCES.IMG["gameplay_cars"] = dict()
-nb_player_cars = 9
-for i in range(nb_player_cars):
+NB_PLAYER_CARS = 9
+for i in range(NB_PLAYER_CARS):
     i += 1
     RESOURCES.IMG["garage_cars"][i] = set_constant_file(IMG_FOLDER, "garage", f"voiture_{i}.png")
     RESOURCES.IMG["gameplay_cars"][i] = list()
@@ -52,8 +52,8 @@ for i in range(nb_player_cars):
             RESOURCES.IMG["gameplay_cars"][i].append(image)
 #--- Voitures obstacles
 RESOURCES.IMG["traffic"] = {"normal":{}, "opposé":{}}
-nb_traffic_car = 4
-for i in range(nb_traffic_car):
+NB_TRAFFIC_CARS = 4
+for i in range(NB_TRAFFIC_CARS):
     i += 1
     for sens in RESOURCES.IMG["traffic"]:
         RESOURCES.IMG["traffic"][sens][i] = [
