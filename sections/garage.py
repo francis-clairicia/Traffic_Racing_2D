@@ -3,7 +3,7 @@
 import pygame
 from my_pygame import Window, Clickable, Button, ImageButton, Image, Text, ProgressBar, RectangleShape, ButtonListHorizontal, DrawableList
 from my_pygame import GRAY, GRAY_LIGHT, YELLOW, GREEN, GREEN_LIGHT, GREEN_DARK, TRANSPARENT
-from my_pygame import change_brightness
+from my_pygame import change_saturation, change_brightness
 from constants import RESOURCES, CAR_INFOS, ENVIRONMENT
 from save import SAVE
 from .gameplay import Gameplay, format_number
@@ -173,7 +173,7 @@ class EnvironmentChooser(Window):
             b = Button(
                 self, img=Image(RESOURCES.IMG[name], max_width=180, max_height=180), compound="center",
                 outline=3, callback=lambda env=name: self.play(env), bg=color,
-                hover_bg=change_brightness(color, 20), active_bg=change_brightness(color, -20),
+                hover_bg=change_saturation(color, -20), active_bg=change_brightness(color, -20),
                 hover_sound=RESOURCES.SFX["select"], on_click_sound=RESOURCES.SFX["validate"], highlight_color=YELLOW
             )
             b.set_size(200)
@@ -249,7 +249,7 @@ class Garage(Window):
             **params_for_button_except_back
         )
         self.text_money = Text(format_number(SAVE["money"]), (RESOURCES.FONT["algerian"], 50), YELLOW, img=Image(RESOURCES.IMG["piece"], height=40), compound="right")
-        self.text_highscore = Text("Highscore: {}".format(SAVE["highscore"]), (RESOURCES.FONT["algerian"], 50), YELLOW)
+        self.text_highscore = Text("Highscore: {}".format(format_number(SAVE["highscore"])), (RESOURCES.FONT["algerian"], 50), YELLOW)
         self.padlock = Image(RESOURCES.IMG["padlock"])
         self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=RESOURCES.SFX["back"]))
         self.bind_joystick(0, "B", lambda event: self.stop(sound=RESOURCES.SFX["back"]))
@@ -325,4 +325,4 @@ class Garage(Window):
         environment_chooser = EnvironmentChooser(self)
         environment_chooser.mainloop()
         self.text_money.message = format_number(SAVE["money"])
-        self.text_highscore.message = "Highscore: {}".format(SAVE["highscore"])
+        self.text_highscore.message = "Highscore: {}".format(format_number(SAVE["highscore"]))
