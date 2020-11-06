@@ -53,6 +53,7 @@ class Focusable:
                 self.__side[side] = None
 
     def focus_drawing(self, surface: pygame.Surface):
+        self.focus_update()
         if not self.has_focus():
             return
         if hasattr(self, "rect"):

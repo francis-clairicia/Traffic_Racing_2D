@@ -87,8 +87,6 @@ class DrawableList:
             if self.__bg_color and self.__bg_color != TRANSPARENT:
                 pygame.draw.rect(surface, self.__bg_color, self.rect)
             for obj in self.__list:
-                if isinstance(obj, Focusable):
-                    obj.focus_update()
                 obj.draw(surface)
             self.after_drawing(surface)
 
