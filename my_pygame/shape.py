@@ -47,9 +47,9 @@ class Shape(Drawable):
         self.__outline_color = pygame.Color(value) if value is not None else TRANSPARENT
 
     def before_drawing(self, surface: pygame.Surface) -> None:
-        new_image = pygame.Surface(self.size, flags=pygame.SRCALPHA)
-        self.__draw_function(new_image, self.color, new_image.get_rect())
-        self.image = new_image
+        self.fill(TRANSPARENT)
+        self.__draw_function(self.image, self.color, self.image.get_rect())
+        self.mask_update()
 
     def after_drawing(self, surface: pygame.Surface) -> None:
         if self.outline > 0:

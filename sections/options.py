@@ -3,7 +3,6 @@
 import pygame
 from my_pygame import Window, RectangleShape, Text, Button, ImageButton, Image, CheckBox, Scale
 from my_pygame import GREEN, GREEN_DARK, TRANSPARENT, YELLOW, RED, RED_DARK, RED_LIGHT, WHITE, BLACK, GRAY_DARK, GRAY
-from my_pygame.gamepad_viewer import GamepadViewer
 from constants import RESOURCES
 from save import SAVE
 
@@ -48,7 +47,6 @@ class Options(Window):
         Window.__init__(self, master=master, bg_music=master.bg_music)
         self.frame = RectangleShape(0.60 * self.width, 0.60 * self.height, GREEN, outline=3)
         self.title = Text("Options", font=(RESOURCES.FONT["algerian"], 70))
-        self.text_gp_viewer = Text("F12: Gamepad viewer", (RESOURCES.FONT["algerian"], 20))
 
         self.options_font = (RESOURCES.FONT["algerian"], 40)
         self.case_font = (RESOURCES.FONT["algerian"], 30)
@@ -156,7 +154,6 @@ class Options(Window):
 
         self.bind_key(pygame.K_ESCAPE, lambda event: self.stop(sound=RESOURCES.SFX["back"]))
         self.bind_joystick(0, "B", lambda event: self.stop(sound=RESOURCES.SFX["back"]))
-        self.bind_key(pygame.K_F12, lambda event: self.open_joystick_viewer())
 
     def on_quit(self):
         SAVE.dump()
@@ -165,7 +162,7 @@ class Options(Window):
         self.page = (self.page % self.nb_pages) + 1
 
     def update(self):
-        self.hide_all(without=[self.frame, self.title, self.text_gp_viewer, self.button_back, self.button_change_page])
+        self.hide_all(without=[self.frame, self.title, self.button_back, self.button_change_page])
         if self.page == 1:
             self.text_music.show()
             self.text_sound.show()
@@ -208,7 +205,6 @@ class Options(Window):
     def place_objects(self):
         self.frame.move(center=self.center)
         self.title.move(top=self.frame.top + 10, centerx=self.frame.centerx)
-        self.text_gp_viewer.move(top=self.frame.top + 5, right=self.frame.right - 5)
         self.button_back.move(top=self.frame.top + 5, left=self.frame.left + 5)
         self.button_change_page.move(bottom=self.frame.bottom - 5, right=self.frame.right - 5)
         ## PAGE 1 ##
@@ -250,6 +246,3 @@ class Options(Window):
 
     def choose_key(self, action: str):
         AssignmentPrompt(self, action).mainloop()
-
-    def open_joystick_viewer(self):
-        GamepadViewer(self).mainloop()
