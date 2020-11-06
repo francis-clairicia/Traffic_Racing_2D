@@ -31,21 +31,25 @@ def find_value_in_container(key_path: Tuple[Union[int, str], ...], container: Di
 
 class Resources:
 
-    __slots__ = ("__img", "__font", "__music", "__sfx")
+    __slots__ = ("__img", "__font", "__music", "__sfx", "__loaded")
 
     def __init__(self):
         self.__img = dict()
         self.__font = dict()
         self.__music = dict()
         self.__sfx = dict()
+        self.__loaded = False
 
-    def load(self):
+    def load(self) -> None:
+        if self.__loaded:
+            return
         for key_path in find_in_iterable(self.__img, valid_callback=os.path.isfile):
             key, container = travel_container(key_path, self.__img)
             container[key] = pygame.image.load(container[key]).convert_alpha()
         for key_path in find_in_iterable(self.__sfx, valid_callback=os.path.isfile):
             key, container = travel_container(key_path, self.__sfx)
             container[key] = pygame.mixer.Sound(container[key])
+        self.__loaded = True
 
     def set_sfx_volume(self, volume: float, state: bool) -> float:
         if volume < 0:
@@ -75,9 +79,13 @@ class Resources:
     def get_sfx(self, *key_path) -> pygame.mixer.Sound:
         return find_value_in_container(key_path, self.__sfx)
 
-    IMG = property(lambda self: self.__img, lambda self, value: self.__img.update(value if isinstance(value, dict) else dict()))
-    FONT = property(lambda self: self.__font, lambda self, value: self.__font.update(value if isinstance(value, dict) else dict()))
-    MUSIC = property(lambda self: self.__music, lambda self, value: self.__music.update(value if isinstance(value, dict) else dict()))
-    SFX = property(lambda self: self.__sfx, lambda self, value: self.__sfx.update(value if isinstance(value, dict) else dict()))
+    def __add_to_dict(self, resource_dict: dict, resources: dict) -> None:
+        if not self.__loaded and isinstance(resources, dict):
+            resource_dict.update(resources)
+
+    IMG = property(lambda self: self.__img, lambda self, value: self.__add_to_dict(self.__img, value))
+    FONT = property(lambda self: self.__font, lambda self, value: self.__add_to_dict(self.__font, value))
+    MUSIC = property(lambda self: self.__music, lambda self, value: self.__add_to_dict(self.__music, value))
+    SFX = property(lambda self: self.__sfx, lambda self, value: self.__add_to_dict(self.__sfx, value))
 
 RESOURCES = Resources()

@@ -23,6 +23,7 @@ class Entry(Clickable, RectangleShape):
         self.__cursor = 0
         self.__show_cursor = False
         self.__cursor_animated = False
+        self.__cursor_animation_window_callback = None
         for event in [pygame.KEYDOWN, pygame.TEXTINPUT, pygame.TEXTEDITING]:
             self.master.bind_event(event, self.key_press)
         if self.edit():
@@ -42,14 +43,14 @@ class Entry(Clickable, RectangleShape):
             cursor_end = (self.__text.left + width, self.__text.centery + height // 2)
             pygame.draw.line(surface, self.__text.color, cursor_start, cursor_end, 2)
 
-    def __animate_cursor(self, milliseconds: float):
+    def __animate_cursor(self, milliseconds: float) -> None:
         if not self.edit():
             self.__show_cursor = False
             self.__cursor_animated = False
         else:
             self.__show_cursor = not self.__show_cursor
             self.__cursor_animated = True
-            self.master.after(milliseconds, lambda: self.__animate_cursor(milliseconds))
+            self.__cursor_animation_window_callback = self.master.after(milliseconds, lambda: self.__animate_cursor(milliseconds))
 
     @property
     def cursor(self) -> int:
@@ -66,16 +67,17 @@ class Entry(Clickable, RectangleShape):
     def get(self) -> str:
         return self.__text.message
 
-    def start_edit(self):
+    def start_edit(self) -> None:
         self.master.enable_text_input(self.rect)
         if not self.__cursor_animated:
             self.__animate_cursor(500)
 
-    def stop_edit(self):
+    def stop_edit(self) -> None:
         self.master.disable_text_input()
         self.__show_cursor = False
+        self.master.remove_window_callback(self.__cursor_animation_window_callback)
 
-    def move(self, **kwargs):
+    def move(self, **kwargs) -> None:
         RectangleShape.move(self, **kwargs)
         try:
             if self.edit():

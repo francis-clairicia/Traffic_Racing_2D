@@ -7,8 +7,8 @@ class CountDown(Text):
 
     __slots__ = ("__seconds", "__master", "__callback")
 
-    def __init__(self, master: Window, seconds: int, format="{seconds}", *args, **kwargs):
-        Text.__init__(self, str(), *args, **kwargs)
+    def __init__(self, master: Window, seconds: int, format="{seconds}", **kwargs):
+        Text.__init__(self, **kwargs)
         self.__seconds = int(seconds)
         self.__time = 0
         self.__show = True

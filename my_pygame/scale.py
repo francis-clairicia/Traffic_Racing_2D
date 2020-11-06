@@ -5,10 +5,11 @@ import pygame
 from .progress import ProgressBar
 from .clickable import Clickable
 from .window import Window
+from .colors import BLUE
 
 class Scale(Clickable, ProgressBar):
     def __init__(self, master: Window, callback=None, state="normal",
-                 highlight_color=(0, 0, 255), hover_sound=None, on_click_sound=None, disabled_sound=None, **kwargs):
+                 highlight_color=BLUE, hover_sound=None, on_click_sound=None, disabled_sound=None, **kwargs):
         ProgressBar.__init__(self, **kwargs)
         Clickable.__init__(self, master, self.call_update, state=state, highlight_color=highlight_color, hover_sound=hover_sound, on_click_sound=on_click_sound, disabled_sound=disabled_sound)
         self.__callback = callback
@@ -21,7 +22,7 @@ class Scale(Clickable, ProgressBar):
             self.percent = (mouse_pos[0] - self.x) / self.width
             self.call_update()
 
-    def axis_event(self, value) -> None:
+    def axis_event(self, value: float) -> None:
         if self.has_focus():
             self.percent += (0.01 * value)
             self.call_update()
@@ -40,6 +41,6 @@ class Scale(Clickable, ProgressBar):
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.on_mouse_motion(event.pos)
 
-    def call_update(self):
+    def call_update(self) -> None:
         if callable(self.__callback):
             self.__callback(self.value, self.percent)

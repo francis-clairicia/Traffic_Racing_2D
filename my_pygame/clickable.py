@@ -39,45 +39,45 @@ class Clickable(Focusable):
         return self.__master
 
     @property
-    def callback(self):
+    def callback(self) -> Callable[..., Any]:
         return self.__callback
 
     @callback.setter
-    def callback(self, callback: Callable[..., Any]):
+    def callback(self, callback: Callable[..., Any]) -> None:
         if callable(callback):
             self.__callback = callback
         else:
             self.__callback = None
 
     @property
-    def state(self):
+    def state(self) -> str:
         return self.__state
 
     @state.setter
-    def state(self, value: str):
+    def state(self, value: str) -> None:
         if value not in (Clickable.NORMAL, Clickable.DISABLED):
             return
         self.__state = value
         self.on_change_state()
 
     @property
-    def hover_sound(self):
+    def hover_sound(self) -> pygame.mixer.Sound:
         return self.__hover_sound
 
     @property
-    def on_click_sound(self):
+    def on_click_sound(self) -> pygame.mixer.Sound:
         return self.__on_click_sound
 
     @property
-    def disabled_sound(self):
+    def disabled_sound(self) -> pygame.mixer.Sound:
         return self.__disabled_sound
 
     @property
-    def active(self):
+    def active(self) -> bool:
         return self.__active
 
     @active.setter
-    def active(self, status: bool):
+    def active(self, status: bool) -> None:
         status = bool(status)
         active = self.__active
         self.__active = status
@@ -90,11 +90,11 @@ class Clickable(Focusable):
                 self.on_active_unset()
 
     @property
-    def hover(self):
+    def hover(self) -> bool:
         return self.__hover
 
     @hover.setter
-    def hover(self, status: bool):
+    def hover(self, status: bool) -> None:
         status = bool(status)
         hover = self.__hover
         self.__hover = status
@@ -106,11 +106,11 @@ class Clickable(Focusable):
             if hover:
                 self.on_leave()
 
-    def play_hover_sound(self):
+    def play_hover_sound(self) -> None:
         if isinstance(self.hover_sound, pygame.mixer.Sound):
             self.hover_sound.play()
 
-    def play_on_click_sound(self):
+    def play_on_click_sound(self) -> None:
         if self.state == Clickable.NORMAL and isinstance(self.on_click_sound, pygame.mixer.Sound):
             self.on_click_sound.play()
         elif self.state == Clickable.DISABLED and isinstance(self.disabled_sound, pygame.mixer.Sound):
@@ -162,19 +162,19 @@ class Clickable(Focusable):
             else:
                 self.hover = False
 
-    def enable_mouse(self):
+    def enable_mouse(self) -> None:
         self.__enable_mouse = True
 
-    def disable_mouse(self):
+    def disable_mouse(self) -> None:
         self.__enable_mouse = False
 
-    def enable_key_joy(self):
+    def enable_key_joy(self) -> None:
         self.__enable_key = True
 
-    def disable_key_joy(self):
+    def disable_key_joy(self) -> None:
         self.__enable_key = False
 
-    def focus_update(self):
+    def focus_update(self) -> None:
         if Focusable.MODE != Focusable.MODE_MOUSE and self.take_focus():
             self.hover = self.has_focus()
 

@@ -18,6 +18,7 @@ class Drawable(Sprite):
         self.__valid_size = True
         self.__animation_started = False
         self.__animation_params = dict()
+        self.__animation_window_callback = None
         self.image = self.resize_surface(surface, **kwargs)
         self.rotate(rotate)
 
@@ -25,19 +26,19 @@ class Drawable(Sprite):
     def from_size(cls, size: Tuple[int, int], **kwargs):
         return cls(pygame.Surface(size, flags=pygame.SRCALPHA), **kwargs)
 
-    def __getitem__(self, name: str):
+    def __getitem__(self, name: str) -> Union[int, Tuple[int, int]]:
         return getattr(self.rect, name)
 
-    def __setitem__(self, name: str, value: Any):
+    def __setitem__(self, name: str, value: Any) -> None:
         self.move(**{name: value})
 
-    def fill(self, color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]) -> None:
+    def fill(self, color: pygame.Color) -> None:
         self.image.fill(color)
-        self.__mask = pygame.mask.from_surface(self.__surface)
+        self.mask_update()
 
     def blit(self, source, dest, area=None, special_flags=0) -> pygame.Rect:
         rect = self.image.blit(source, dest, area=area, special_flags=special_flags)
-        self.__mask = pygame.mask.from_surface(self.image)
+        self.mask_update()
         return rect
 
     def show(self) -> None:
@@ -118,7 +119,7 @@ class Drawable(Sprite):
         self.__rect = self.__surface.get_rect(x=self.__x, y=self.__y)
         self.__former_moves = {"x": self.__x, "y": self.__y}
 
-    def animate_move(self, master, milliseconds: float, speed=1, after_move=None, **kwargs):
+    def animate_move(self, master, milliseconds: float, speed=1, after_move=None, **kwargs) -> None:
         if milliseconds <= 0 or speed <= 0:
             self.move(**kwargs)
         else:
@@ -148,13 +149,15 @@ class Drawable(Sprite):
         else:
             direction.scale_to_length(speed)
             self.move_ip(direction.x, direction.y)
-            master.after(milliseconds, lambda: self.__animate_move(**self.__animation_params))
+            self.__animation_window_callback = master.after(milliseconds, lambda: self.__animate_move(**self.__animation_params))
 
     def animate_move_started(self) -> bool:
         return self.__animation_started
 
-    def animate_move_stop(self):
+    def animate_move_stop(self) -> None:
         self.__animation_started = False
+        if "master" in self.__animation_params:
+            self.__animation_params["master"].remove_window_callback(self.__animation_window_callback)
 
     def animate_move_restart(self):
         if not self.__animation_started and self.__animation_params:

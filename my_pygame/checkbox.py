@@ -8,7 +8,7 @@ from .clickable import Clickable
 from .window import Window
 
 class CheckBox(Clickable, RectangleShape):
-    def __init__(self, master: Window, width: int, height: int, color: tuple, value=False, on_value=True, off_value=False,
+    def __init__(self, master: Window, width: int, height: int, color: pygame.Color, value=None, on_value=True, off_value=False,
                  outline=2, image: Optional[Image] = None, callback: Optional[Callable[..., Any]] = None,
                  highlight_color=(0, 0, 255), state="normal", hover_sound=None, on_click_sound=None, disabled_sound=None, **kwargs):
         RectangleShape.__init__(self, width, height, color, outline=outline, **kwargs)
@@ -22,12 +22,14 @@ class CheckBox(Clickable, RectangleShape):
         self.value = value
 
     @property
-    def value(self):
+    def value(self) -> Any:
         return self.__value
 
     @value.setter
     def value(self, value: Any):
-        if value not in [self.__on_value, self.__off_value]:
+        if value is None:
+            value = self.__off_value
+        elif value not in [self.__on_value, self.__off_value]:
             return
         self.__value = value
         if callable(self.__on_changed_value):
@@ -55,5 +57,5 @@ class CheckBox(Clickable, RectangleShape):
                     width=2
                 )
 
-    def change_value(self):
+    def change_value(self) -> None:
         self.value = self.__on_value if self.value == self.__off_value else self.__off_value

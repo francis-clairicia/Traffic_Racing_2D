@@ -12,5 +12,5 @@ class Image(Drawable):
     def from_filepath(cls, filepath: str, **kwargs):
         return cls(surface=pygame.image.load(filepath).convert_alpha(), **kwargs)
 
-    def load(self, surface: pygame.Surface, **kwargs):
+    def load(self, surface: pygame.Surface, **kwargs) -> None:
         self.image = self.resize_surface(surface, **kwargs)

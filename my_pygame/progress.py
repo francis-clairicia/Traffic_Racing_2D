@@ -12,7 +12,7 @@ class ProgressBar(RectangleShape):
     S_RIGHT = "right"
     S_INSIDE = "inside"
 
-    def __init__(self, width: int, height: int, color: tuple, scale_color: tuple, outline=2, from_=0, to=1, default=None, **kwargs):
+    def __init__(self, width: int, height: int, color: pygame.Color, scale_color: pygame.Color, outline=2, from_=0, to=1, default=None, **kwargs):
         RectangleShape.__init__(self, width, height, (0, 0, 0, 0), outline=outline, **kwargs)
         if to <= from_:
             raise ValueError("end value 'to' must be greather than 'from'")
@@ -94,7 +94,7 @@ class ProgressBar(RectangleShape):
         return float(self.__percent)
 
     @percent.setter
-    def percent(self, value: float):
+    def percent(self, value: float) -> None:
         if value > 1:
             value = 1
         elif value < 0:
@@ -107,7 +107,7 @@ class ProgressBar(RectangleShape):
         return float(self.__value)
 
     @value.setter
-    def value(self, value: float):
+    def value(self, value: float) -> None:
         if value > self.__end:
             value = self.__end
         elif value < self.__start:

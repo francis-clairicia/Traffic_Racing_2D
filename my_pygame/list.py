@@ -1,14 +1,15 @@
 # -*- coding: Utf-8 -*
 
-from typing import Sequence, Any
+from typing import Sequence, Iterator, Any
 import pygame
 from .drawable import Drawable
 from .focusable import Focusable
 from .shape import RectangleShape
+from .colors import TRANSPARENT
 
 class DrawableList:
     def __init__(self, bg_color=None, draw=True):
-        self.__bg_color = bg_color
+        self.__bg_color = pygame.Color(bg_color) if bg_color is not None else TRANSPARENT
         self.__list = list()
         self.__index = -1
         self.__draw = draw
@@ -16,7 +17,7 @@ class DrawableList:
     def __len__(self) -> int:
         return len(self.__list)
 
-    def __iter__(self) -> Sequence[Drawable]:
+    def __iter__(self) -> Iterator[Drawable]:
         return iter(self.__list)
 
     def __getitem__(self, index: int) -> Drawable:
@@ -40,7 +41,7 @@ class DrawableList:
         return len(self.__list)
 
     @property
-    def bg_color(self) -> tuple:
+    def bg_color(self) -> pygame.Color:
         return self.__bg_color
 
     def add(self, obj: Drawable, *objs: Drawable) -> None:
@@ -83,7 +84,7 @@ class DrawableList:
     def draw(self, surface: pygame.Surface) -> None:
         if self.is_shown() and self.__draw:
             self.before_drawing(surface)
-            if isinstance(self.__bg_color, tuple):
+            if self.__bg_color and self.__bg_color != TRANSPARENT:
                 pygame.draw.rect(surface, self.__bg_color, self.rect)
             for obj in self.__list:
                 if isinstance(obj, Focusable):
@@ -97,11 +98,11 @@ class DrawableList:
     def after_drawing(self, surface: pygame.Surface) -> None:
         pass
 
-    def update(self, *args, **kwargs):
+    def update(self, *args, **kwargs) -> None:
         for obj in self.__list:
             obj.update(*args, **kwargs)
 
-    def move(self, **kwargs):
+    def move(self, **kwargs) -> None:
         pass
 
     def move_ip(self, x: float, y: float) -> None:
@@ -125,7 +126,7 @@ class DrawableList:
         else:
             self.__index = -1
 
-    def focus_obj_on_side(self, side: str):
+    def focus_obj_on_side(self, side: str) -> None:
         actual_obj = self.focus_get()
         if actual_obj is None:
             self.focus_next()
@@ -136,7 +137,7 @@ class DrawableList:
             if obj:
                 self.set_focus(obj)
 
-    def set_focus(self, obj: Focusable):
+    def set_focus(self, obj: Focusable) -> None:
         if obj is not None and obj not in self.focusable:
             return
         for obj_f in self.focusable:
@@ -147,22 +148,22 @@ class DrawableList:
         else:
             self.__index = -1
 
-    def remove_focus(self, obj: Focusable):
+    def remove_focus(self, obj: Focusable) -> None:
         if obj not in self.focusable:
             return
         obj.focus = False
         if self.focus_get() == obj:
             self.set_focus(None)
 
-    def focus_mode_update(self):
+    def focus_mode_update(self) -> None:
         if Focusable.MODE != Focusable.MODE_MOUSE and self.focus_get() is None:
             self.focus_next()
 
-    def show(self):
+    def show(self) -> None:
         for obj in self.__list:
             obj.show()
 
-    def hide(self):
+    def hide(self) -> None:
         for obj in self.__list:
             obj.hide()
 
@@ -264,7 +265,7 @@ class AbstractDrawableListAligned(DrawableList):
         DrawableList.remove_from_index(self, index)
         self.__align_all_objects()
 
-    def move(self, **kwargs):
+    def move(self, **kwargs) -> None:
         if self.list:
             self.__background.set_size(self.size)
             self.__background.move(**kwargs)
@@ -273,7 +274,7 @@ class AbstractDrawableListAligned(DrawableList):
             self.__align_all_objects()
             DrawableList.move(self)
 
-    def __align_all_objects(self):
+    def __align_all_objects(self) -> None:
         for obj_1, obj_2 in zip(self.list[:-1], self.list[1:]):
             obj_2.move(**{self.__start: getattr(obj_1.rect, self.__end, 0) + self.offset})
         for obj in self.list:
@@ -303,7 +304,7 @@ class ButtonListVertical(DrawableListVertical):
         DrawableListVertical.remove_from_index(self, index)
         self.__handle_buttons()
 
-    def __handle_buttons(self):
+    def __handle_buttons(self) -> None:
         if len(self.list) > 0:
             for i, button in enumerate(self.list):
                 if i == 0:
@@ -350,7 +351,7 @@ class ButtonListHorizontal(DrawableListHorizontal):
         DrawableListHorizontal.remove_from_index(self, index)
         self.__handle_buttons()
 
-    def __handle_buttons(self):
+    def __handle_buttons(self) -> None:
         if len(self.list) > 0:
             for i, button in enumerate(self.list):
                 if i == 0:

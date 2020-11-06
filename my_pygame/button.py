@@ -8,18 +8,19 @@ from .text import Text
 from .shape import RectangleShape
 from .clickable import Clickable
 from .window import Window
+from .colors import WHITE, GRAY, GRAY_LIGHT, GRAY_DARK, BLACK, BLUE, TRANSPARENT
 
 class Button(Clickable, RectangleShape):
     def __init__(self, master: Window, text=str(), font=None, img=None, compound="left",
                  callback: Optional[Callable[..., Any]] = None, state="normal",
-                 size=None, outline=2, outline_color=(0, 0, 0),
-                 bg=(255, 255, 255), fg=(0, 0, 0),
-                 hover_bg=(235, 235, 235), hover_fg=None, hover_sound=None,
-                 active_bg=(128, 128, 128), active_fg=None, on_click_sound=None,
-                 disabled_bg=(128, 128, 128), disabled_fg=(0, 0, 0), disabled_sound=None,
+                 size=None, outline=2, outline_color=BLACK,
+                 bg=GRAY_LIGHT, fg=BLACK,
+                 hover_bg=WHITE, hover_fg=None, hover_sound=None,
+                 active_bg=GRAY, active_fg=None, on_click_sound=None,
+                 disabled_bg=GRAY_DARK, disabled_fg=BLACK, disabled_sound=None,
                  disabled_hover_bg=None, disabled_hover_fg=None,
                  disabled_active_bg=None, disabled_active_fg=None,
-                 highlight_color=(0, 0, 255),
+                 highlight_color=BLUE,
                  **kwargs):
         self.__text = Text(text, font, fg, justify=Text.T_CENTER, img=img, compound=compound)
         self.__text_offset_move = 0
@@ -77,7 +78,7 @@ class Button(Clickable, RectangleShape):
         self.set_size(self.__text.w + 20, self.__text.h + 20)
 
     @property
-    def img(self):
+    def img(self) -> Image:
         return self.__text.img
 
     @img.setter
@@ -118,7 +119,7 @@ class Button(Clickable, RectangleShape):
 class ImageButton(Button):
 
     def __init__(self, master: Window, img: pygame.Surface, hover_img: Optional[pygame.Surface] = None, active_img: Optional[pygame.Surface] = None, size=None, width=None, height=None, rotate=0, offset=3, **kwargs):
-        kwargs["bg"] = kwargs["hover_bg"] = kwargs["active_bg"] = kwargs["disabled_bg"] = (0, 0, 0, 0)
+        kwargs["bg"] = kwargs["hover_bg"] = kwargs["active_bg"] = kwargs["disabled_bg"] = TRANSPARENT
         kwargs["outline"] = 0
         kwargs["compound"] = "center"
         kwargs["offset"] = offset

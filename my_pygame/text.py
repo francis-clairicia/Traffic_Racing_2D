@@ -6,6 +6,7 @@ import pygame
 from pygame.font import Font, SysFont
 from .drawable import Drawable
 from .image import Image
+from .colors import BLACK
 
 class Text(Drawable):
 
@@ -13,19 +14,19 @@ class Text(Drawable):
     T_RIGHT = "right"
     T_CENTER = "center"
 
-    def __init__(self, message=str(), font=None, color=(0, 0, 0),
-                 justify="left", shadow=False, shadow_x=0, shadow_y=0, shadow_color=(0, 0, 0),
+    def __init__(self, message=str(), font=None, color=BLACK,
+                 justify="left", shadow=False, shadow_x=0, shadow_y=0, shadow_color=BLACK,
                  img=None, compound="left", **kwargs):
         Drawable.__init__(self, **kwargs)
         self.__str = str()
         self.__font = None
         self.__custom_font = dict()
-        self.__color = (0, 0, 0)
+        self.__color = BLACK
         self.__img = None
         self.__compound = self.__justify = "left"
         self.__shadow = (0, 0)
-        self.__shadow_surface = Text(self.__str, self.font, (0, 0, 0), shadow=False) if shadow else None
-        self.__shadow_color = (0, 0, 0)
+        self.__shadow_surface = Text(self.__str, self.font, BLACK, shadow=False) if shadow else None
+        self.__shadow_color = BLACK
         self.shadow_color = shadow_color
         self.config(message=message, font=font, color=color, img=img, justify=justify, compound=compound, shadow=(shadow_x, shadow_y))
         self.__update_surface()
@@ -47,35 +48,35 @@ class Text(Drawable):
         self.config(message=string)
 
     @property
-    def img(self):
+    def img(self) -> Image:
         return self.__img
 
     @img.setter
-    def img(self, img):
+    def img(self, img) -> None:
         self.config(img=img)
 
     @property
-    def compound(self):
+    def compound(self) -> str:
         return self.__compound
 
     @compound.setter
-    def compound(self, value: str):
+    def compound(self, value: str) -> None:
         self.config(compound=value)
 
     @property
-    def justify(self):
+    def justify(self) -> str:
         return self.__justify
 
     @justify.setter
-    def justify(self, value: str):
+    def justify(self, value: str) -> None:
         self.config(justify=value)
 
     @property
-    def color(self):
+    def color(self) -> pygame.Color:
         return self.__color
 
     @color.setter
-    def color(self, color: tuple) -> None:
+    def color(self, color: pygame.Color) -> None:
         self.config(color=color)
 
     @property
@@ -87,12 +88,12 @@ class Text(Drawable):
         self.config(shadow=pos)
 
     @property
-    def shadow_color(self) -> Tuple[int, int]:
+    def shadow_color(self) -> pygame.Color:
         return self.__shadow_color
 
     @shadow_color.setter
-    def shadow_color(self, color: Tuple[int, int]) -> None:
-        self.__shadow_color = color
+    def shadow_color(self, color: pygame.Color) -> None:
+        self.__shadow_color = pygame.Color(color)
         if self.__shadow_surface:
             self.__shadow_surface.color = color
 
@@ -116,14 +117,14 @@ class Text(Drawable):
             obj = SysFont(pygame.font.get_default_font(), 15)
         return obj
 
-    def config(self, **kwargs):
+    def config(self, **kwargs) -> None:
         config_for_shadow = dict()
         if "message" in kwargs:
             config_for_shadow["message"] = self.__str = str(kwargs["message"])
         if "font" in kwargs:
             config_for_shadow["font"] = self.__font = self.create_font_object(kwargs["font"])
         if "color" in kwargs:
-            self.__color = tuple(kwargs["color"])
+            self.__color = pygame.Color(kwargs["color"])
         if "justify" in kwargs and kwargs["justify"] in ("left", "right", "center"):
             config_for_shadow["justify"] = self.__justify = kwargs["justify"]
         if "img" in kwargs:
@@ -141,16 +142,16 @@ class Text(Drawable):
         if self.__shadow_surface:
             self.__shadow_surface.config(**config_for_shadow)
 
-    def before_drawing(self, surface: pygame.Surface):
+    def before_drawing(self, surface: pygame.Surface) -> None:
         if self.__shadow_surface and self.__shadow_surface.is_shown():
             self.__shadow_surface.move(x=self.x + self.shadow[0], y=self.y + self.shadow[1])
             self.__shadow_surface.draw(surface)
 
-    def set_custom_line_font(self, index: int, font):
+    def set_custom_line_font(self, index: int, font) -> None:
         self.__custom_font[index] = self.create_font_object(font)
         self.__update_surface()
 
-    def remove_custom_line_font(self, index: int):
+    def remove_custom_line_font(self, index: int) -> None:
         self.__custom_font.pop(index, None)
         self.__update_surface()
 
@@ -179,38 +180,38 @@ class Text(Drawable):
                 y += render.get_height()
         else:
             text = pygame.Surface((0, 0), flags=pygame.SRCALPHA)
-        if self.img:
-            function_to_get_size = {
-                "left": {"width": sum, "height": max},
-                "right": {"width": sum, "height": max},
-                "top": {"width": max, "height": sum},
-                "bottom": {"width": max, "height": sum},
-                "center": {"width": max, "height": max},
-            }
-            size = {"width": 0, "height": 0}
-            for field in size:
-                size[field] = function_to_get_size[self.compound][field](getattr(obj, field) for obj in [text.get_rect(), self.img.rect])
-            w = size["width"] + 5
-            h = size["height"]
-            surface_to_draw = pygame.Surface((w, h), flags=pygame.SRCALPHA)
-            rect_to_draw = surface_to_draw.get_rect()
-            move_text = {
-                "left": {"right": rect_to_draw.right, "centery": rect_to_draw.centery},
-                "right": {"left": rect_to_draw.left, "centery": rect_to_draw.centery},
-                "top": {"bottom": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
-                "bottom": {"top": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
-                "center": {"center": rect_to_draw.center}
-            }
-            move_img = {
-                "left": {"left": rect_to_draw.left, "centery": rect_to_draw.centery},
-                "right": {"right": rect_to_draw.right, "centery": rect_to_draw.centery},
-                "top": {"top": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
-                "bottom": {"bottom": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
-                "center": {"center": rect_to_draw.center}
-            }
-            self.img.move(**move_img[self.compound])
-            self.img.draw(surface_to_draw)
-            surface_to_draw.blit(text, text.get_rect(**move_text[self.compound]))
-            self.image = surface_to_draw
-        else:
+        if not isinstance(self.img, Image):
             self.image = text
+            return
+        function_to_get_size = {
+            "left": {"width": sum, "height": max},
+            "right": {"width": sum, "height": max},
+            "top": {"width": max, "height": sum},
+            "bottom": {"width": max, "height": sum},
+            "center": {"width": max, "height": max},
+        }
+        size = {"width": 0, "height": 0}
+        for field in size:
+            size[field] = function_to_get_size[self.compound][field](getattr(obj, field) for obj in [text.get_rect(), self.img.rect])
+        w = size["width"] + 5
+        h = size["height"]
+        surface_to_draw = pygame.Surface((w, h), flags=pygame.SRCALPHA)
+        rect_to_draw = surface_to_draw.get_rect()
+        move_text = {
+            "left": {"right": rect_to_draw.right, "centery": rect_to_draw.centery},
+            "right": {"left": rect_to_draw.left, "centery": rect_to_draw.centery},
+            "top": {"bottom": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
+            "bottom": {"top": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
+            "center": {"center": rect_to_draw.center}
+        }
+        move_img = {
+            "left": {"left": rect_to_draw.left, "centery": rect_to_draw.centery},
+            "right": {"right": rect_to_draw.right, "centery": rect_to_draw.centery},
+            "top": {"top": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
+            "bottom": {"bottom": rect_to_draw.bottom, "centerx": rect_to_draw.centerx},
+            "center": {"center": rect_to_draw.center}
+        }
+        self.img.move(**move_img[self.compound])
+        self.img.draw(surface_to_draw)
+        surface_to_draw.blit(text, text.get_rect(**move_text[self.compound]))
+        self.image = surface_to_draw

@@ -3,10 +3,11 @@
 import pygame
 from .window import Window
 from .shape import RectangleShape
+from .colors import WHITE, BLACK
 
 class Dialog(Window):
     def __init__(self, master: Window, width_ratio=0.5, height_ratio=0.5,
-                 bg_color=(255, 255, 255), outline=3, outline_color=(0, 0, 0), bg_music=None,
+                 bg_color=WHITE, outline=3, outline_color=BLACK, bg_music=None,
                  hide_all_without=list(), show_all_without=list()):
         if not isinstance(master, Window):
             raise TypeError(f"master must be a Window instance, not {master.__class__.__name__}")

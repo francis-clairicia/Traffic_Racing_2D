@@ -2,7 +2,7 @@
 
 import os
 import sys
-from typing import Tuple, Union, Optional, Iterator
+from typing import List, Tuple, Union, Optional, Iterator
 import pickle
 import pygame
 
@@ -52,7 +52,7 @@ class Joystick(object):
 
     """------------------------------------------------------------------"""
 
-    def set_default_layout(self):
+    def set_default_layout(self) -> None:
         layout = {
             "A":             ("button", 0, 1),
             "B":             ("button", 1, 1),
@@ -87,7 +87,7 @@ class Joystick(object):
         for key, value in layout.items():
             self.__event_type[key] = list(value)
 
-    def __save_to_file(self):
+    def __save_to_file(self) -> None:
         self.__save[self.guid] = dict(self.__event_type)
         with open(self.__save_file, "wb") as save:
             pickle.dump(self.__save, save)
@@ -95,15 +95,15 @@ class Joystick(object):
     """------------------------------------------------------------------"""
 
     @property
-    def button_list(self):
+    def button_list(self) -> List[str]:
         return self.__button_list
 
     @property
-    def axis_list(self):
+    def axis_list(self) -> List[str]:
         return self.__axis_list
 
     @property
-    def dpad_list(self):
+    def dpad_list(self) -> List[str]:
         return self.__dpad_list
 
     """------------------------------------------------------------------"""
@@ -114,7 +114,7 @@ class Joystick(object):
             raise NameError("{} isn't recognized".format(key))
         return key
 
-    def get_value(self, key: str) -> int:
+    def get_value(self, key: str) -> float:
         key = self.__test(key)
         event, index, active_state = self.__event_type[key]
         if not self.connected():
@@ -128,21 +128,18 @@ class Joystick(object):
             state = actions[event](index)
         except pygame.error:
             return 0
-        if key in self.button_list + self.dpad_list:
-            if event == "button":
-                return state
-            if event == "hat" and isinstance(state, tuple):
-                return 1 if all(active_state[i] == 0 or state[i] == active_state[i] for i in range(2)) else 0
-            if event == "axis":
-                if self.__button_axis_return_bool:
-                    return 1 if state >= 0.9 else 0
-                if active_state != 0:
-                    if (active_state > 0 and state < 0) or (active_state < 0 and state > 0):
-                        return 0
-                    return abs(state)
-                return state
-            return 0
-        elif active_state != 0:
+        if event == "button":
+            return state
+        if event == "hat" and isinstance(state, tuple):
+            return 1 if all(active_state[i] == 0 or state[i] == active_state[i] for i in range(2)) else 0
+        if event == "axis":
+            if key not in self.axis_list and self.__button_axis_return_bool:
+                return 1 if state >= 0.9 else 0
+            return self.__get_axis_value(state, active_state)
+        return 0
+
+    def __get_axis_value(self, state: float, active_state: int) -> float:
+        if active_state != 0:
             if (active_state > 0 and state < 0) or (active_state < 0 and state > 0):
                 return 0
             return abs(state)
@@ -185,7 +182,7 @@ class Joystick(object):
     """------------------------------------------------------------------"""
 
     @property
-    def device_index(self):
+    def device_index(self) -> int:
         return self.__index
 
     @property

@@ -1,6 +1,6 @@
 # -*- coding: Utf-8 -*
 
-from typing import Union
+from typing import Union, Dict
 import pygame
 
 class Keyboard(object):
@@ -10,11 +10,11 @@ class Keyboard(object):
     def __init__(self):
         self.__states = list()
 
-    def update(self):
+    def update(self) -> None:
         self.__states = pygame.key.get_pressed()
 
     @property
-    def key_dict(self) -> dict:
+    def key_dict(self) -> Dict[int, str]:
         return { # Ceci est la liste des keys
             pygame.K_0:             "0",
             pygame.K_1:             "1",
@@ -73,7 +73,7 @@ class Keyboard(object):
         }
 
     @property
-    def key_values(self) -> dict:
+    def key_values(self) -> Dict[int, str]:
         return {v: k for k, v in self.key_dict.items()}
 
     def __contains__(self, key: int) -> bool:
@@ -86,12 +86,12 @@ class Keyboard(object):
             return self.key_values.get(key)
         return None
 
-    def is_pressed(self, key: Union[int, str]) -> bool:
+    def is_pressed(self, key: Union[int, str]) -> int:
         try:
             if key in self.key_dict:
-                return bool(self.__states[key])
+                return self.__states[key]
             if key in self.key_values:
-                return bool(self.__states[self.key_values[key]])
+                return self.__states[self.key_values[key]]
         except IndexError as e:
             print(e)
-        return False
+        return 0

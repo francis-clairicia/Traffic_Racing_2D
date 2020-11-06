@@ -1,6 +1,6 @@
 # -*- coding: Utf-8 -*
 
-import pygame
+import pygame.time
 
 class Clock(object):
 
@@ -22,7 +22,7 @@ class Clock(object):
             return True
         return False
 
-    def restart(self):
+    def restart(self) -> None:
         self.__clock.tick()
         self.__time = 0
 

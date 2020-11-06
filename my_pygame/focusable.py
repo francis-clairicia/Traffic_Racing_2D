@@ -1,6 +1,7 @@
 # -*- coding: Utf-8 -*
 
 import pygame
+from .colors import BLUE
 
 class Focusable:
 
@@ -13,13 +14,13 @@ class Focusable:
     ON_TOP = "on_top"
     ON_BOTTOM = "on_bottom"
 
-    def __init__(self, master, highlight_color=(0, 0, 255), highlight_thickness=2):
+    def __init__(self, master, highlight_color=BLUE, highlight_thickness=2):
         self.__focus = False
         self.__side = dict.fromkeys((Focusable.ON_LEFT, Focusable.ON_RIGHT, Focusable.ON_TOP, Focusable.ON_BOTTOM))
         self.__take_focus = True
         self.__from_master = False
         self.__master = master
-        self.__highlight_color = highlight_color
+        self.__highlight_color = pygame.Color(highlight_color)
         self.__highlight_thickness = highlight_thickness
 
     @property
