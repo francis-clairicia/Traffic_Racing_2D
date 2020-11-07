@@ -8,7 +8,14 @@ from my_pygame import Window, Image, Button, RectangleShape, Text, ImageButton
 from my_pygame import ButtonListVertical, DrawableListVertical
 from my_pygame import GREEN, GREEN_DARK, GREEN_LIGHT, YELLOW
 from my_pygame import RESOURCES
+from my_pygame import Loading
 from save import SAVE
+
+class CustomLoading(Loading):
+    def __init__(self):
+        Loading.__init__(self, font=("calibri", 100))
+        self.progress.scale_color = GREEN
+        self.progress.size = (self.text.width, self.progress.height * (1 + 0.5))
 
 class Credits(Window):
     def __init__(self, master: Window):
@@ -38,7 +45,7 @@ class Credits(Window):
 
 class TrafficRacing(Window):
     def __init__(self):
-        Window.__init__(self, flags=pygame.FULLSCREEN|pygame.HWSURFACE|pygame.DOUBLEBUF, bg_music=RESOURCES.MUSIC["menu"], loading=True)
+        Window.__init__(self, flags=pygame.FULLSCREEN|pygame.HWSURFACE|pygame.DOUBLEBUF, bg_music=RESOURCES.MUSIC["menu"], loading=CustomLoading)
         self.set_title("Traffic Racing 2D")
         self.set_icon(RESOURCES.IMG["icon"])
         self.set_fps(120)
