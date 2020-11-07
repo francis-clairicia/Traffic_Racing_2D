@@ -43,8 +43,9 @@ class Window(object):
     __default_key_repeat = (0, 0)
     __text_input_enabled = False
     __all_opened = list()
-    __sound_volume = 0
-    __music_volume = 0
+    __use_config = True
+    __sound_volume = 50
+    __music_volume = 50
     __enable_music = True
     __enable_sound = True
     __actual_music = None
@@ -58,10 +59,10 @@ class Window(object):
     __server_socket = ServerSocket()
     __client_socket = ClientSocket()
 
-    def __init__(self, master=None, size=(0, 0), flags=0, bg_color=BLACK, bg_music=None, loading=None):
+    def __init__(self, master=None, size=(0, 0), flags=0, bg_color=BLACK, bg_music=None, loading=None, config=True):
         if not isinstance(Window.__main_window, Window):
             Window.__main_window = self
-        self.__init_pygame(size, flags, loading)
+        self.__init_pygame(size, flags, loading, config)
         self.__master = master
         self.__main_clock = pygame.time.Clock()
         self.__loop = False
@@ -93,13 +94,14 @@ class Window(object):
         if not Window.__fps_obj:
             Window.__fps_obj = Text(color=BLUE)
 
-    def __init_pygame(self, size: Tuple[int, int], flags: int, loading) -> None:
+    def __init_pygame(self, size: Tuple[int, int], flags: int, loading, config: bool) -> None:
         if not pygame.get_init():
             pygame.mixer.pre_init(Window.MIXER_FREQUENCY, Window.MIXER_SIZE, Window.MIXER_CHANNELS, Window.MIXER_BUFFER)
             status = pygame.init()
             if status[1] > 0:
                 print("Error on pygame initialization ({} modules failed to load)".format(status[1]), file=sys.stderr)
                 sys.exit(1)
+            Window.__use_config = bool(config)
             Window.load_config()
             Window.bind_event_all_window(pygame.JOYDEVICEADDED, Window.__joystick.event_connect)
             Window.bind_event_all_window(pygame.CONTROLLERDEVICEADDED, Window.__joystick.event_connect)
@@ -491,16 +493,20 @@ class Window(object):
 
     @staticmethod
     def load_config() -> None:
+        if not Window.__use_config:
+            return
         config = configparser.ConfigParser()
         config.read(CONFIG_FILE)
-        Window.set_music_volume(config.getfloat("MUSIC", "volume", fallback=50) / 100)
-        Window.set_music_state(config.getboolean("MUSIC", "enable", fallback=True))
-        Window.set_sound_volume(config.getfloat("SFX", "volume", fallback=50) / 100)
-        Window.set_sound_state(config.getboolean("SFX", "enable", fallback=True))
-        Window.show_fps(config.getboolean("FPS", "show", fallback=False))
+        Window.set_music_volume(config.getfloat("MUSIC", "volume", fallback=Window.__music_volume) / 100)
+        Window.set_music_state(config.getboolean("MUSIC", "enable", fallback=Window.__enable_music))
+        Window.set_sound_volume(config.getfloat("SFX", "volume", fallback=Window.__sound_volume) / 100)
+        Window.set_sound_state(config.getboolean("SFX", "enable", fallback=Window.__enable_sound))
+        Window.show_fps(config.getboolean("FPS", "show", fallback=Window.__show_fps))
 
     @staticmethod
     def save_config() -> None:
+        if not Window.__use_config:
+            return
         config_dict = {
             "MUSIC": {
                 "volume": round(Window.__music_volume * 100),

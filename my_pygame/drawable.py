@@ -182,6 +182,8 @@ class Drawable(Sprite):
             scale_func = pygame.transform.smoothscale
         else:
             scale_func = pygame.transform.scale
+        if not isinstance(surface, pygame.Surface):
+            surface = pygame.Surface((0, 0), flags=pygame.SRCALPHA)
         w, h = surface.get_size()
         if isinstance(size, (list, tuple)):
             width, height = size
