@@ -9,6 +9,7 @@ from .drawable import Drawable
 from .focusable import Focusable
 from .text import Text
 from .shape import RectangleShape
+from .progress import ProgressBar
 from .list import DrawableList
 from .joystick import Joystick, JoystickList
 from .keyboard import Keyboard
@@ -38,6 +39,7 @@ class Window(object):
     MIXER_CHANNELS = 2
     MIXER_BUFFER = 512
 
+    __main_window = None
     __default_key_repeat = (0, 0)
     __text_input_enabled = False
     __all_opened = list()
@@ -56,8 +58,10 @@ class Window(object):
     __server_socket = ServerSocket()
     __client_socket = ClientSocket()
 
-    def __init__(self, master=None, size=(0, 0), flags=0, bg_color=BLACK, bg_music=None):
-        Window.init_pygame(size, flags)
+    def __init__(self, master=None, size=(0, 0), flags=0, bg_color=BLACK, bg_music=None, loading=False):
+        if not isinstance(Window.__main_window, Window):
+            Window.__main_window = self
+        self.__init_pygame(size, flags, loading)
         self.__master = master
         self.__main_clock = pygame.time.Clock()
         self.__loop = False
@@ -88,8 +92,7 @@ class Window(object):
         if not Window.__fps_obj:
             Window.__fps_obj = Text(color=BLUE)
 
-    @staticmethod
-    def init_pygame(size=(0, 0), flags=0) -> None:
+    def __init_pygame(self, size: Tuple[int, int], flags: int, loading: bool) -> None:
         if not pygame.get_init():
             pygame.mixer.pre_init(Window.MIXER_FREQUENCY, Window.MIXER_SIZE, Window.MIXER_CHANNELS, Window.MIXER_BUFFER)
             status = pygame.init()
@@ -106,14 +109,34 @@ class Window(object):
                 video_info = pygame.display.Info()
                 size = video_info.current_w, video_info.current_h
             pygame.display.set_mode(tuple(size), flags)
+            self.__load_resources(bool(loading))
+
+    def __load_resources(self, show: bool) -> None:
+        nb_resources_to_load = len(RESOURCES)
+        if nb_resources_to_load == 0:
+            return
+        if not show:
             RESOURCES.load()
-            RESOURCES.set_sfx_volume(Window.__sound_volume, Window.__enable_sound)
+        else:
+            text = Text("Loading resources...", font=(None, 50), color=WHITE)
+            text.move(centerx=self.centerx, bottom=self.centery - 10)
+            progress = ProgressBar(0.15 * self.width, 0.05 * self.height, color=BLACK, scale_color=WHITE, outline=2, outline_color=WHITE, from_=0, to=nb_resources_to_load)
+            progress.move(centerx=self.centerx, top=self.centery + 10)
+            clock = pygame.time.Clock()
+            thread = RESOURCES.threaded_load()
+            while RESOURCES.loaded != nb_resources_to_load:
+                clock.tick(30)
+                text.draw(self.surface)
+                progress.value = RESOURCES.loaded
+                progress.draw(self.surface)
+                pygame.display.update([text.rect, progress.rect])
+                pygame.event.pump()
+            thread.join()
+        RESOURCES.set_sfx_volume(Window.__sound_volume, Window.__enable_sound)
 
     @property
     def main_window(self) -> bool:
-        if not Window.__all_opened:
-            return True
-        return bool(Window.__all_opened[0] == self)
+        return bool(Window.__main_window == self)
 
     @property
     def joystick(self) -> JoystickList:

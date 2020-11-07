@@ -2,9 +2,10 @@
 
 import os
 import pygame
-from typing import Tuple, Union, Dict, List, Any
+from typing import Tuple, Union, Dict, List, Any, Iterator
+from .thread import threaded_function
 
-def find_in_iterable(iterable, *key_before, valid_callback=None):
+def find_in_iterable(iterable, *key_before, valid_callback=None) -> Iterator[Tuple[Union[int, str], ...]]:
     if isinstance(iterable, dict):
         for key, value in iterable.items():
             yield from find_in_iterable(value, *key_before, key, valid_callback=valid_callback)
@@ -38,18 +39,48 @@ class Resources:
         self.__font = dict()
         self.__music = dict()
         self.__sfx = dict()
-        self.__loaded = False
+        self.__loaded = 0
+
+    @property
+    def loaded(self) -> int:
+        return self.__loaded
+
+    @property
+    def img_to_load(self) -> Iterator[Tuple[Union[int, str], ...]]:
+        return find_in_iterable(self.__img, valid_callback=os.path.isfile)
+
+    @property
+    def sfx_to_load(self) -> Iterator[Tuple[Union[int, str], ...]]:
+        return find_in_iterable(self.__sfx, valid_callback=os.path.isfile)
+
+    def __len__(self) -> int:
+        return len(list(self.img_to_load)) + len(list(self.sfx_to_load))
 
     def load(self) -> None:
         if self.__loaded:
             return
-        for key_path in find_in_iterable(self.__img, valid_callback=os.path.isfile):
-            key, container = travel_container(key_path, self.__img)
-            container[key] = pygame.image.load(container[key]).convert_alpha()
-        for key_path in find_in_iterable(self.__sfx, valid_callback=os.path.isfile):
-            key, container = travel_container(key_path, self.__sfx)
-            container[key] = pygame.mixer.Sound(container[key])
-        self.__loaded = True
+        loading_method = [
+            (self.__img, self.img_to_load, lambda resource: pygame.image.load(resource).convert_alpha()),
+            (self.__sfx, self.sfx_to_load, lambda resource: pygame.mixer.Sound(resource))
+        ]
+        for resources_container, resources_finder, resources_loader in loading_method:
+            for key_path in resources_finder:
+                key, container = travel_container(key_path, resources_container)
+                container[key] = resources_loader(container[key])
+                self.__loaded += 1
+
+        # for key_path in img_to_load:
+        #     key, container = travel_container(key_path, self.__img)
+        #     container[key] = pygame.image.load(container[key]).convert_alpha()
+        #     self.__loaded += 1
+        # for key_path in sfx_to_load:
+        #     key, container = travel_container(key_path, self.__sfx)
+        #     container[key] = pygame.mixer.Sound(container[key])
+        #     self.__loaded
+
+    @threaded_function
+    def threaded_load(self) -> None:
+        self.load()
 
     def set_sfx_volume(self, volume: float, state: bool) -> float:
         if volume < 0:

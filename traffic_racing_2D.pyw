@@ -38,7 +38,7 @@ class Credits(Window):
 
 class TrafficRacing(Window):
     def __init__(self):
-        Window.__init__(self, flags=pygame.FULLSCREEN|pygame.HWSURFACE|pygame.DOUBLEBUF, bg_music=RESOURCES.MUSIC["menu"])
+        Window.__init__(self, flags=pygame.FULLSCREEN|pygame.HWSURFACE|pygame.DOUBLEBUF, bg_music=RESOURCES.MUSIC["menu"], loading=True)
         self.set_title("Traffic Racing 2D")
         self.set_icon(RESOURCES.IMG["icon"])
         self.set_fps(120)
