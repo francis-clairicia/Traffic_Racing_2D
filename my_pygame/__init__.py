@@ -19,7 +19,6 @@ from .count_down import CountDown
 from .colors import *
 from .joystick import Joystick
 from .keyboard import Keyboard
-from .loading import Loading
 from .dialog import Dialog
 from .path import set_constant_file, set_constant_directory
 from .resources import RESOURCES
