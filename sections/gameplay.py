@@ -75,7 +75,7 @@ class PlayerCar(Car):
         self.maniability = infos["maniability"]
         self.braking = infos["braking"] * 1000
 
-    def update(self, *args, **kwargs):
+    def update(self, pixel_per_ms: int):
         if not self.__crashed and self.__speed_clock.elapsed_time(self.__speed_time):
             if self.__braking:
                 self.speed -= (self.__speed_time * self.max_speed / self.braking) * self.__braking_offset
@@ -97,7 +97,6 @@ class PlayerCar(Car):
                     self.move_ip(0, (self.__move_time * self.maniability / 1000) * self.__move_offset)
                 self.__move = False
             else:
-                pixel_per_ms = args[0]
                 x = (-self.__speed_on_crash) * pixel_per_ms
                 self.move_ip(x, 0)
 
@@ -113,23 +112,23 @@ class PlayerCar(Car):
         self.__crashed = False
         self.__speed_on_crash = 0
 
-    def speed_up(self, offset=1):
-        if not self.__speed_up:
+    def speed_up(self, offset: int):
+        if not self.__speed_up and offset > 0:
             self.__speed_up = True
             self.__speed_up_offset = offset
 
-    def brake(self, offset=1):
-        if not self.__braking:
+    def brake(self, offset: int):
+        if not self.__braking and offset > 0:
             self.__braking = True
             self.__braking_offset = offset
 
-    def moveUp(self, offset=1):
-        if not self.__move:
+    def moveUp(self, offset: int):
+        if not self.__move and offset > 0:
             self.__move = True
             self.__move_offset = -offset
 
-    def moveDown(self, offset=1):
-        if not self.__move:
+    def moveDown(self, offset: int):
+        if not self.__move and offset > 0:
             self.__move = True
             self.__move_offset = offset
 
@@ -141,8 +140,7 @@ class TrafficCar(Car):
         self.side = 1 if side == "normal" else -1
         self.speed = (35, 40, 50, 60)[car_id - 1]
 
-    def update(self, *args, **kwargs):
-        pixel_per_ms = args[0]
+    def update(self, pixel_per_ms: int):
         x = (self.speed * self.side) * pixel_per_ms
         self.move_ip(x, 0)
 
@@ -493,10 +491,8 @@ class Gameplay(Window):
                 (controls["down"], self.car.moveDown),
             )
             for control, car_function in car_handling:
-                if self.keyboard.is_pressed(control["key"]):
-                    car_function()
-                elif joystick.get_value(control["joy"]):
-                    car_function(joystick.get_value(control["joy"]))
+                car_function(self.keyboard.is_pressed(control["key"]))
+                car_function(joystick.get_value(control["joy"]))
             if SAVE["auto_acceleration"] is True:
                 self.car.speed_up()
         self.car.update(self.pixel_per_ms)

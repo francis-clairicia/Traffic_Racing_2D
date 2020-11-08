@@ -15,7 +15,7 @@ class CustomLoading(Loading):
     def __init__(self):
         Loading.__init__(self, font=("calibri", 100))
         self.progress.scale_color = GREEN
-        self.progress.size = (self.text.width, self.progress.height * (1 + 0.5))
+        self.progress.size = (self.width * 0.75, self.progress.height * (1 + 0.5))
 
 class Credits(Window):
     def __init__(self, master: Window):
