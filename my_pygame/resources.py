@@ -50,17 +50,27 @@ class Resources:
         return find_in_iterable(self.__img, valid_callback=os.path.isfile)
 
     @property
+    def font_to_load(self) -> Iterator[Tuple[Union[int, str], ...]]:
+        return find_in_iterable(self.__font, valid_callback=lambda path: not os.path.isfile(path))
+
+    @property
+    def music_to_load(self) -> Iterator[Tuple[Union[int, str], ...]]:
+        return find_in_iterable(self.__music, valid_callback=lambda path: not os.path.isfile(path))
+
+    @property
     def sfx_to_load(self) -> Iterator[Tuple[Union[int, str], ...]]:
         return find_in_iterable(self.__sfx, valid_callback=os.path.isfile)
 
     def __len__(self) -> int:
-        return len(list(self.img_to_load)) + len(list(self.sfx_to_load))
+        return sum(len(list(iterator)) for iterator in [self.img_to_load, self.font_to_load, self.music_to_load, self.sfx_to_load])
 
     def load(self) -> None:
         if self.__loaded:
             return
         loading_method = [
             (self.__img, self.img_to_load, lambda resource: pygame.image.load(resource).convert_alpha()),
+            (self.__font, self.font_to_load, lambda resource: None),
+            (self.__music, self.music_to_load, lambda resource: None),
             (self.__sfx, self.sfx_to_load, lambda resource: pygame.mixer.Sound(resource))
         ]
         for resources_container, resources_finder, resources_loader in loading_method:
@@ -68,15 +78,6 @@ class Resources:
                 key, container = travel_container(key_path, resources_container)
                 container[key] = resources_loader(container[key])
                 self.__loaded += 1
-
-        # for key_path in img_to_load:
-        #     key, container = travel_container(key_path, self.__img)
-        #     container[key] = pygame.image.load(container[key]).convert_alpha()
-        #     self.__loaded += 1
-        # for key_path in sfx_to_load:
-        #     key, container = travel_container(key_path, self.__sfx)
-        #     container[key] = pygame.mixer.Sound(container[key])
-        #     self.__loaded
 
     @threaded_function
     def threaded_load(self) -> None:

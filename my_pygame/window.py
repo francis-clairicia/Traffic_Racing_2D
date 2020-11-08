@@ -67,7 +67,7 @@ class Window(object):
         self.__main_clock = pygame.time.Clock()
         self.__loop = False
         self.__show_fps_in_this_window = True
-        self.objects = DrawableList()
+        self.__objects = DrawableList()
         self.__event_handler_dict = dict()
         self.__key_handler_dict = dict()
         self.__key_state_dict = dict()
@@ -136,13 +136,17 @@ class Window(object):
     def keyboard(self) -> Keyboard:
         return Window.__keyboard
 
+    @property
+    def objects(self) -> DrawableList:
+        return self.__objects
+
     def __setattr__(self, name, obj) -> None:
-        if isinstance(obj, (Drawable, DrawableList)) and name != "objects":
+        if isinstance(obj, (Drawable, DrawableList)) and name != "_Window__objects":
             self.objects.add(obj)
         return object.__setattr__(self, name, obj)
 
     def __delattr__(self, name) -> None:
-        if isinstance(obj, (Drawable, DrawableList)) and name != "objects":
+        if isinstance(obj, (Drawable, DrawableList)) and name != "_Window__objects":
             self.objects.remove(obj)
         return object.__delattr__(self, name)
 
