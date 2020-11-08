@@ -49,8 +49,8 @@ class PolygonShape(Shape):
         self.__from_property = False
 
     @property
-    def points(self) -> Tuple[Vector2]:
-        return tuple(self.__points)
+    def points(self) -> List[Vector2]:
+        return list(self.__points)
 
     @points.setter
     def points(self, points: List[Union[Tuple[int, int], Vector2]]) -> None:
@@ -132,7 +132,6 @@ class RectangleShape(Shape):
         for key, value in filter(lambda key, value: key in self.__draw_params, kwargs.items()):
             self.__draw_params[key] = int(value)
 
-    shape_config = property(lambda self: self.__draw_params.copy())
     border_radius = property(
         lambda self: self.__draw_params["border_radius"],
         lambda self, value: self.config(border_radius=value)
@@ -195,7 +194,6 @@ class CircleShape(Shape):
         for key, value in filter(lambda key, value: key in self.__draw_params, kwargs.items()):
             self.__draw_params[key] = bool(value)
 
-    shape_config = property(lambda self: self.__draw_params.copy())
     draw_top_left = property(
         lambda self: self.__draw_params["draw_top_left"],
         lambda self, value: self.config(draw_top_left=value)

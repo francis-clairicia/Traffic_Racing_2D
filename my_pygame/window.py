@@ -108,7 +108,6 @@ class Window(object):
             Window.bind_event_all_window(pygame.CONTROLLERDEVICEADDED, Window.__joystick.event_connect)
             Window.bind_event_all_window(pygame.JOYDEVICEREMOVED, Window.__joystick.event_disconnect)
             Window.bind_event_all_window(pygame.CONTROLLERDEVICEREMOVED, Window.__joystick.event_disconnect)
-        if pygame.display.get_surface() is None:
             if size[0] <= 0 or size[1] <= 0:
                 video_info = pygame.display.Info()
                 size = video_info.current_w, video_info.current_h

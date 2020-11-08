@@ -3,11 +3,12 @@
 from typing import Tuple, Optional, Any, Union, Callable
 import pygame
 from pygame.sprite import Sprite
+from .surface import create_surface
 from .vector import Vector2
 
 class Drawable(Sprite):
 
-    def __init__(self, surface: Optional[pygame.Surface] = pygame.Surface((0, 0), flags=pygame.SRCALPHA), rotate=0, **kwargs):
+    def __init__(self, surface: Optional[pygame.Surface] = None, rotate=0, **kwargs):
         Sprite.__init__(self)
         self.__surface = self.__mask = None
         self.__rect = pygame.Rect(0, 0, 0, 0)
@@ -24,7 +25,7 @@ class Drawable(Sprite):
 
     @classmethod
     def from_size(cls, size: Tuple[int, int], **kwargs):
-        return cls(pygame.Surface(size, flags=pygame.SRCALPHA), **kwargs)
+        return cls(create_surface(size), **kwargs)
 
     def __getitem__(self, name: str) -> Union[int, Tuple[int, int]]:
         return getattr(self.rect, name)
@@ -62,7 +63,7 @@ class Drawable(Sprite):
         if isinstance(surface, Drawable):
             surface = surface.image
         elif not isinstance(surface, pygame.Surface):
-            surface = pygame.Surface((0, 0), flags=pygame.SRCALPHA)
+            surface = create_surface((0, 0))
         self.__surface = surface
         self.__rect = self.__surface.get_rect(**self.__former_moves)
         self.mask_update()
@@ -183,7 +184,7 @@ class Drawable(Sprite):
         else:
             scale_func = pygame.transform.scale
         if not isinstance(surface, pygame.Surface):
-            surface = pygame.Surface((0, 0), flags=pygame.SRCALPHA)
+            surface = create_surface((0, 0))
         w, h = surface.get_size()
         if isinstance(size, (list, tuple)):
             width, height = size

@@ -10,7 +10,7 @@ class Joystick(object):
 
     def __init__(self, index: int):
         self.__index = index
-        self.__joystick = None
+        self.__joystick = pygame.joystick.Joystick(index) if index in range(Joystick.count()) else None
 
         self.__button_list = ["A", "B", "X", "Y", "L1", "L2", "R1", "R2", "SELECT", "START", "L3", "R3", "HOME"]
         self.__axis_list = ["AXIS_LEFT_X", "AXIS_LEFT_Y", "AXIS_RIGHT_X", "AXIS_RIGHT_Y"]
@@ -37,7 +37,6 @@ class Joystick(object):
             return
         if event.type in (pygame.CONTROLLERDEVICEADDED, pygame.JOYDEVICEADDED) and event.device_index == self.__index:
             self.__joystick = pygame.joystick.Joystick(event.device_index)
-            self.__joystick.init()
             if self.guid in self.__save:
                 self.__event_type = self.__save[self.guid]
             else:
@@ -112,10 +111,10 @@ class Joystick(object):
 
     def get_value(self, key: str) -> float:
         key, suffix = self.__test(key)
-        event, index, active_state = self.__event_type[key]
-        active_state = {"": active_state, "-": -1, "+": 1}[suffix]
         if not self.connected():
             return 0
+        event, index, active_state = self.__event_type[key]
+        active_state = {"": active_state, "-": -1, "+": 1}[suffix]
         actions = {
             "button": self.__joystick.get_button,
             "axis": self.__joystick.get_axis,
@@ -165,9 +164,6 @@ class Joystick(object):
         }
         if event in event_map:
             self.__event_type[key] = list(event_map[event])
-            if key.startswith("AXIS_") and event_map[event][0] == "axis":
-                self.__event_type[key + "-"] = [*event_map[event][0:2], -1]
-                self.__event_type[key + "+"] = [*event_map[event][0:2], 1]
             self.__save_to_file()
 
     def set_button_axis(self, state: bool) -> None:
@@ -194,16 +190,20 @@ class Joystick(object):
     def name(self) -> str:
         return self.__joystick.get_name() if self.connected() else str()
 
+    @property
+    def power_level(self) -> str:
+        return self.__joystick.get_power_level() if self.connected() else "unknown"
+
     """------------------------------------------------------------------"""
 
     @staticmethod
     def count() -> int:
-        return len(Joystick.list())
+        return pygame.joystick.get_count()
 
     @staticmethod
     def list() -> Tuple[str, ...]:
         try:
-            joystick = tuple(pygame.joystick.Joystick(i).get_name() for i in range(pygame.joystick.get_count()))
+            joystick = tuple(pygame.joystick.Joystick(i).get_name() for i in range(Joystick.count()))
         except pygame.error:
             joystick = tuple()
         return joystick

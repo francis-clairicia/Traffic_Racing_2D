@@ -3,6 +3,7 @@
 import itertools
 from typing import List, Union, Dict
 import pygame
+from .surface import create_surface
 from .drawable import Drawable
 from .image import Image
 from .clock import Clock
@@ -62,7 +63,7 @@ class Sprite(Drawable):
         if self.__nb_sprites > 0:
             self.image = self.__sprite_list[0]
         else:
-            self.image = pygame.Surface((0, 0), flags=pygame.SRCALPHA)
+            self.image = create_surface((0, 0))
 
     def resize_sprite_list(self, name: str, **kwargs) -> None:
         for sprite in self.get_sprite_list(name):

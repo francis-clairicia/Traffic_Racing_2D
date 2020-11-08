@@ -4,6 +4,7 @@ import os.path
 from typing import Tuple
 import pygame
 from pygame.font import Font, SysFont
+from .surface import create_surface
 from .drawable import Drawable
 from .image import Image
 from .colors import BLACK
@@ -165,7 +166,7 @@ class Text(Drawable):
             size[1] += render.get_height()
             render_lines.append(render)
         if render_lines:
-            text = pygame.Surface(size, flags=pygame.SRCALPHA)
+            text = create_surface(size)
             text.fill((0, 0, 0, 0))
             text_rect = text.get_rect()
             y = 0
@@ -179,7 +180,7 @@ class Text(Drawable):
                 text.blit(render, render.get_rect(**params, y=y))
                 y += render.get_height()
         else:
-            text = pygame.Surface((0, 0), flags=pygame.SRCALPHA)
+            text = create_surface((0, 0))
         if not isinstance(self.img, Image):
             self.image = text
             return
@@ -195,7 +196,7 @@ class Text(Drawable):
             size[field] = function_to_get_size[self.compound][field](getattr(obj, field) for obj in [text.get_rect(), self.img.rect])
         w = size["width"] + 5
         h = size["height"]
-        surface_to_draw = pygame.Surface((w, h), flags=pygame.SRCALPHA)
+        surface_to_draw = create_surface((w, h))
         rect_to_draw = surface_to_draw.get_rect()
         move_text = {
             "left": {"right": rect_to_draw.right, "centery": rect_to_draw.centery},
