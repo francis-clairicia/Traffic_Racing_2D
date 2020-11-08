@@ -6,7 +6,7 @@ from .progress import ProgressBar
 from .colors import WHITE, BLACK
 
 class Loading(Window):
-    def __init__(self, text="Loading resources...", font=(None, 50), bg=BLACK, fg=WHITE):
+    def __init__(self, text="Loading...", font=(None, 50), bg=BLACK, fg=WHITE):
         Window.__init__(self, bg_color=bg)
         self.show_fps_in_this_window(False)
         self.__text = Text(message=text, font=font, color=fg)
