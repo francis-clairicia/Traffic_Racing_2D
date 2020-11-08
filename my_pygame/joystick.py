@@ -72,17 +72,9 @@ class Joystick(object):
             "L2":            ("axis", 2, 1),
             "R2":            ("axis", 5, 1),
             "AXIS_LEFT_X":   ("axis", 0, 0),
-            "AXIS_LEFT_X-":  ("axis", 0, -1),
-            "AXIS_LEFT_X+":  ("axis", 0, 1),
             "AXIS_LEFT_Y":   ("axis", 1, 0),
-            "AXIS_LEFT_Y-":  ("axis", 1, -1),
-            "AXIS_LEFT_Y+":  ("axis", 1, 1),
             "AXIS_RIGHT_X":  ("axis", 3, 0),
-            "AXIS_RIGHT_X-": ("axis", 3, -1),
-            "AXIS_RIGHT_X+": ("axis", 3, 1),
             "AXIS_RIGHT_Y":  ("axis", 4, 0),
-            "AXIS_RIGHT_Y-": ("axis", 4, -1),
-            "AXIS_RIGHT_Y+": ("axis", 4, 1),
         }
         for key, value in layout.items():
             self.__event_type[key] = list(value)
@@ -108,15 +100,20 @@ class Joystick(object):
 
     """------------------------------------------------------------------"""
 
-    def __test(self, key: str) -> str:
+    def __test(self, key: str) -> Tuple[str, str]:
         key = key.upper()
+        if key.endswith(("-", "+")):
+            key, suffix = key[:-1], key[-1]
+        else:
+            suffix = str()
         if key not in self.__event_type:
             raise NameError("{} isn't recognized".format(key))
-        return key
+        return key, suffix
 
     def get_value(self, key: str) -> float:
-        key = self.__test(key)
+        key, suffix = self.__test(key)
         event, index, active_state = self.__event_type[key]
+        active_state = {"": active_state, "-": -1, "+": 1}[suffix]
         if not self.connected():
             return 0
         actions = {
@@ -152,7 +149,7 @@ class Joystick(object):
         return None
 
     def __getitem__(self, key: str) -> Union[int, float]:
-        key = self.__test(key)
+        key = self.__test(key)[0]
         infos = self.__event_type[key]
         return infos[1]
 
@@ -160,7 +157,7 @@ class Joystick(object):
         self.set_event(key, *value)
 
     def set_event(self, key: str, event: int, index: int, hat_value: Optional[Tuple[int, int]] = (0, 0)) -> None:
-        key = self.__test(key)
+        key = self.__test(key)[0]
         event_map = {
             pygame.JOYBUTTONDOWN: ("button", index, 1),
             pygame.JOYAXISMOTION: ("axis", index, 0 if key not in self.button_list + self.dpad_list else 1),

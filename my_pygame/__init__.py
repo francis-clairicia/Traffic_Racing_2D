@@ -6,7 +6,7 @@ from .focusable import Focusable
 from .clickable import Clickable
 from .image import Image
 from .text import Text
-from .shape import RectangleShape, CircleShape
+from .shape import RectangleShape, CircleShape, PolygonShape
 from .button import Button, ImageButton
 from .entry import Entry
 from .progress import ProgressBar
@@ -25,3 +25,4 @@ from .path import set_constant_file, set_constant_directory
 from .resources import RESOURCES
 from .thread import threaded_function
 from .multiplayer import ServerSocket, ClientSocket
+from .vector import Vector2

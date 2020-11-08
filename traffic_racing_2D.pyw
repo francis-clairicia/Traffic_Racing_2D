@@ -45,12 +45,11 @@ class Credits(Window):
 
 class TrafficRacing(Window):
     def __init__(self):
-        Window.__init__(self, flags=pygame.FULLSCREEN|pygame.HWSURFACE|pygame.DOUBLEBUF, bg_music=RESOURCES.MUSIC["menu"], loading=CustomLoading)
+        Window.__init__(self, flags=pygame.FULLSCREEN|pygame.HWSURFACE|pygame.DOUBLEBUF, bg_music=RESOURCES.MUSIC["menu"], nb_joystick=1, loading=CustomLoading)
         self.set_title("Traffic Racing 2D")
         self.set_icon(RESOURCES.IMG["icon"])
         self.set_fps(120)
         self.config_fps_obj(font=("calibri", 30))
-        self.joystick.set(1)
         self.bind_key(pygame.K_ESCAPE, lambda key: self.stop())
         mouse_hide_event = (
             pygame.KEYDOWN,

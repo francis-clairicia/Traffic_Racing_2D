@@ -8,7 +8,7 @@ from .vector import Vector2
 
 class Shape(Drawable):
 
-    def __init__(self, color: pygame.Color, outline=0, outline_color=BLACK, **kwargs):
+    def __init__(self, color: pygame.Color, outline: int, outline_color: pygame.Color, **kwargs):
         Drawable.__init__(self, surface=None, size=None, width=None, height=None, min_width=None, min_height=None, max_width=None, max_height=None, smooth=False, **kwargs)
         self.color = color
         self.outline = outline
@@ -42,8 +42,8 @@ class Shape(Drawable):
 
 class PolygonShape(Shape):
 
-    def __init__(self, color: tuple, **kwargs):
-        Shape.__init__(self, color, **kwargs)
+    def __init__(self, color: pygame.Color, outline=0, outline_color=BLACK, **kwargs):
+        Shape.__init__(self, color, outline, outline_color, **kwargs)
         self.__points = list()
         self.__image_points = list()
         self.__from_property = False
@@ -55,7 +55,7 @@ class PolygonShape(Shape):
     @points.setter
     def points(self, points: List[Union[Tuple[int, int], Vector2]]) -> None:
         self.__from_property = True
-        self.__points = [Vector2(point) for point in points]
+        self.__points = points = [Vector2(point) for point in points]
         left = min((point.x for point in self.points), default=0)
         right = max((point.x for point in self.points), default=0)
         top = min((point.y for point in self.points), default=0)
@@ -67,11 +67,12 @@ class PolygonShape(Shape):
 
     def before_drawing(self, surface: pygame.Surface) -> None:
         self.image.fill(TRANSPARENT)
-        pygame.draw.polygon(self.image, self.color, self.__image_points)
+        if len(self.points) > 2:
+            pygame.draw.polygon(self.image, self.color, self.__image_points)
         self.mask_update()
 
     def after_drawing(self, surface: pygame.Surface) -> None:
-        if self.outline > 0:
+        if self.outline > 0 and len(self.points) > 2:
             pygame.draw.polygon(surface, self.outline_color, self.points, width=self.outline)
 
     def focus_drawing_function(self, surface: pygame.Surface, highlight_color: pygame.Color, highlight_thickness: int) -> None:
@@ -102,10 +103,10 @@ class PolygonShape(Shape):
 
 class RectangleShape(Shape):
 
-    def __init__(self, width: int, height: int, color: tuple,
+    def __init__(self, width: int, height: int, color: pygame.Color, outline=0, outline_color=BLACK,
                  border_radius=0, border_top_left_radius=-1, border_top_right_radius=-1,
                  border_bottom_left_radius=-1, border_bottom_right_radius=-1, **kwargs):
-        Shape.__init__(self, color, **kwargs)
+        Shape.__init__(self, color, outline, outline_color, **kwargs)
         self.set_size(width, height)
         self.__draw_params = {
             "border_radius": border_radius,
@@ -129,7 +130,7 @@ class RectangleShape(Shape):
 
     def config(self, **kwargs) -> None:
         for key, value in filter(lambda key, value: key in self.__draw_params, kwargs.items()):
-            self.__draw_params[key] = value
+            self.__draw_params[key] = int(value)
 
     shape_config = property(lambda self: self.__draw_params.copy())
     border_radius = property(
@@ -155,16 +156,16 @@ class RectangleShape(Shape):
 
 class CircleShape(Shape):
 
-    def __init__(self, radius: int, color: tuple,
-                 draw_top_left=None, draw_top_right=None,
-                 draw_bottom_left=None, draw_bottom_right=None, **kwargs):
-        Shape.__init__(self, color, **kwargs)
+    def __init__(self, radius: int, color: pygame.Color, outline=0, outline_color=BLACK,
+                 draw_top_left=True, draw_top_right=True,
+                 draw_bottom_left=True, draw_bottom_right=True, **kwargs):
+        Shape.__init__(self, color, outline, outline_color, **kwargs)
         self.radius = radius
         self.__draw_params = {
             "draw_top_left": draw_top_left,
             "draw_top_right": draw_top_right,
-            "draw_bottom_left": border_top_right_radius,
-            "draw_bottom_right": border_bottom_left_radius
+            "draw_bottom_left": draw_bottom_left,
+            "draw_bottom_right": draw_bottom_right
         }
 
     @property
@@ -192,7 +193,7 @@ class CircleShape(Shape):
 
     def config(self, **kwargs) -> None:
         for key, value in filter(lambda key, value: key in self.__draw_params, kwargs.items()):
-            self.__draw_params[key] = value
+            self.__draw_params[key] = bool(value)
 
     shape_config = property(lambda self: self.__draw_params.copy())
     draw_top_left = property(

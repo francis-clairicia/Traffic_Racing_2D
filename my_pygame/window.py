@@ -59,10 +59,10 @@ class Window(object):
     __server_socket = ServerSocket()
     __client_socket = ClientSocket()
 
-    def __init__(self, master=None, size=(0, 0), flags=0, bg_color=BLACK, bg_music=None, loading=None, config=True):
+    def __init__(self, master=None, size=(0, 0), flags=0, bg_color=BLACK, bg_music=None, nb_joystick=0, loading=None, config=True):
         if not isinstance(Window.__main_window, Window):
             Window.__main_window = self
-        self.__init_pygame(size, flags, loading, config)
+        self.__init_pygame(size, flags, nb_joystick, loading, config)
         self.__master = master
         self.__main_clock = pygame.time.Clock()
         self.__loop = False
@@ -94,7 +94,7 @@ class Window(object):
         if not Window.__fps_obj:
             Window.__fps_obj = Text(color=BLUE)
 
-    def __init_pygame(self, size: Tuple[int, int], flags: int, loading, config: bool) -> None:
+    def __init_pygame(self, size: Tuple[int, int], flags: int, nb_joystick: int, loading, config: bool) -> None:
         if not pygame.get_init():
             pygame.mixer.pre_init(Window.MIXER_FREQUENCY, Window.MIXER_SIZE, Window.MIXER_CHANNELS, Window.MIXER_BUFFER)
             status = pygame.init()
@@ -103,6 +103,7 @@ class Window(object):
                 sys.exit(1)
             Window.__use_config = bool(config)
             Window.load_config()
+            Window.__joystick.set(nb_joystick)
             Window.bind_event_all_window(pygame.JOYDEVICEADDED, Window.__joystick.event_connect)
             Window.bind_event_all_window(pygame.CONTROLLERDEVICEADDED, Window.__joystick.event_connect)
             Window.bind_event_all_window(pygame.JOYDEVICEREMOVED, Window.__joystick.event_disconnect)
